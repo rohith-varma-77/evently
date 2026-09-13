@@ -1,0 +1,412 @@
+import { type ReactNode, useMemo, useState } from "react";
+import { Link, useLocation } from "wouter";
+import {
+  ArrowLeft,
+  ArrowRight,
+  ArrowUpRight,
+  BarChart3,
+  CalendarDays,
+  CalendarPlus,
+  Check,
+  CheckCircle2,
+  ChevronDown,
+  ChevronRight,
+  CircleDollarSign,
+  Clock3,
+  CreditCard,
+  Download,
+  FileText,
+  Globe2,
+  Heart,
+  Info,
+  LayoutDashboard,
+  LogOut,
+  Mail,
+  MapPin,
+  Menu,
+  Moon,
+  MoreHorizontal,
+  Pencil,
+  Phone,
+  Plus,
+  QrCode,
+  Search,
+  Settings,
+  ShieldCheck,
+  Sparkles,
+  Sun,
+  Ticket,
+  TicketCheck,
+  Trash2,
+  TrendingUp,
+  Upload,
+  Users,
+  X,
+  Zap,
+} from "lucide-react";
+import { toast } from "sonner";
+import { useTheme } from "@/contexts/ThemeContext";
+import NotFound from "@/pages/NotFound";
+
+export type TicketTier = { name: string; price: number; description: string; available: number };
+export type EventItem = {
+  id: string;
+  title: string;
+  category: string;
+  date: string;
+  time: string;
+  location: string;
+  venue: string;
+  image: string;
+  price: number;
+  attendees: string;
+  remaining: number;
+  organizer: string;
+  organizerRole: string;
+  description: string;
+  gradient: string;
+  featured?: boolean;
+  tickets: TicketTier[];
+};
+export type Booking = {
+  id: string;
+  eventId: string;
+  eventTitle: string;
+  date: string;
+  location: string;
+  ticket: string;
+  quantity: number;
+  total: number;
+  attendee: string;
+  email: string;
+};
+
+const IMAGES = {
+  festival: "/manus-storage/festival_cc1198c9.jpg",
+  conference: "/manus-storage/conference_ae622517.jpg",
+  community: "/manus-storage/community_e441da4b.jpg",
+  workshop: "/manus-storage/workshop_30ba8811.jpg",
+};
+
+const DEFAULT_EVENTS: EventItem[] = [
+  {
+    id: "neon-futures",
+    title: "Neon Futures Festival",
+    category: "Music",
+    date: "2026-10-24",
+    time: "6:00 PM – 1:00 AM",
+    location: "Mumbai, Maharashtra",
+    venue: "Jio World Garden",
+    image: IMAGES.festival,
+    price: 1499,
+    attendees: "2.4k",
+    remaining: 386,
+    organizer: "Afterglow Collective",
+    organizerRole: "Independent event studio",
+    description: "A full-sensory night of future-facing sounds, kinetic light, and the artists shaping the next decade of electronic culture. Come for the lineup, stay for the people you meet in the crowd.",
+    gradient: "from-fuchsia-500/90 via-violet-500/50 to-transparent",
+    featured: true,
+    tickets: [
+      { name: "General Admission", price: 1499, description: "Entry + all stages", available: 386 },
+      { name: "Afterglow Plus", price: 2999, description: "Fast track + lounge access", available: 74 },
+    ],
+  },
+  {
+    id: "build-better",
+    title: "Build Better Systems",
+    category: "Technology",
+    date: "2026-11-06",
+    time: "9:30 AM – 5:30 PM",
+    location: "Bengaluru, Karnataka",
+    venue: "The Leela Palace",
+    image: IMAGES.conference,
+    price: 2499,
+    attendees: "1.1k",
+    remaining: 118,
+    organizer: "The Product Assembly",
+    organizerRole: "Product community",
+    description: "A practical conference for product builders who want to move from busywork to leverage. Expect honest case studies, tactical workshops, and generous conversations.",
+    gradient: "from-cyan-400/80 via-blue-600/40 to-transparent",
+    featured: true,
+    tickets: [
+      { name: "Builder Pass", price: 2499, description: "Conference access + lunch", available: 118 },
+      { name: "Team Pass", price: 6999, description: "3 seats + team workshop", available: 22 },
+    ],
+  },
+  {
+    id: "makers-table",
+    title: "The Makers' Table",
+    category: "Workshops",
+    date: "2026-10-18",
+    time: "11:00 AM – 3:00 PM",
+    location: "Delhi, NCR",
+    venue: "The Quorum, DLF Avenue",
+    image: IMAGES.workshop,
+    price: 899,
+    attendees: "214",
+    remaining: 29,
+    organizer: "Common Ground",
+    organizerRole: "Creative learning collective",
+    description: "A warm, hands-on afternoon for curious people. Learn a new craft, share a long table, and leave with something made by you.",
+    gradient: "from-amber-400/80 via-orange-600/40 to-transparent",
+    tickets: [{ name: "Workshop Seat", price: 899, description: "Materials + refreshments", available: 29 }],
+  },
+  {
+    id: "campus-create",
+    title: "Campus Create 2026",
+    category: "Community",
+    date: "2026-11-14",
+    time: "10:00 AM – 7:00 PM",
+    location: "Pune, Maharashtra",
+    venue: "Symbiosis Open Air Theatre",
+    image: IMAGES.community,
+    price: 399,
+    attendees: "3.8k",
+    remaining: 821,
+    organizer: "Campus Create Society",
+    organizerRole: "Student-led culture platform",
+    description: "One big day for ideas, music, design, and the kind of unexpected collisions that make college feel electric. Bring your crew.",
+    gradient: "from-emerald-400/80 via-teal-500/40 to-transparent",
+    featured: true,
+    tickets: [{ name: "Day Pass", price: 399, description: "All stages + showcases", available: 821 }],
+  },
+  {
+    id: "midnight-run",
+    title: "Midnight Run Club",
+    category: "Sports",
+    date: "2026-10-31",
+    time: "10:30 PM – 1:00 AM",
+    location: "Hyderabad, Telangana",
+    venue: "Durgam Cheruvu Park",
+    image: IMAGES.festival,
+    price: 599,
+    attendees: "936",
+    remaining: 187,
+    organizer: "Run Free Hyderabad",
+    organizerRole: "City running club",
+    description: "A lit-up 10K, a live DJ, and a finish line that feels more like a block party. Run your pace, find your people.",
+    gradient: "from-indigo-400/80 via-fuchsia-600/40 to-transparent",
+    tickets: [{ name: "Runner Entry", price: 599, description: "Race kit + recovery zone", available: 187 }],
+  },
+  {
+    id: "founders-office-hours",
+    title: "Founders Office Hours",
+    category: "Business",
+    date: "2026-11-21",
+    time: "3:00 PM – 6:00 PM",
+    location: "Mumbai, Maharashtra",
+    venue: "The Bombay Canteen Studio",
+    image: IMAGES.conference,
+    price: 0,
+    attendees: "86",
+    remaining: 14,
+    organizer: "Launch Loop",
+    organizerRole: "Founder network",
+    description: "An intimate room for early-stage builders to ask sharper questions, make useful intros, and leave with a next move.",
+    gradient: "from-sky-400/80 via-slate-500/40 to-transparent",
+    tickets: [{ name: "Community Seat", price: 0, description: "One seat + coffee", available: 14 }],
+  },
+];
+
+const CATEGORIES = [
+  { name: "Music", icon: "◒", color: "bg-fuchsia-100 text-fuchsia-700" },
+  { name: "Technology", icon: "⌁", color: "bg-cyan-100 text-cyan-700" },
+  { name: "Workshops", icon: "✦", color: "bg-amber-100 text-amber-700" },
+  { name: "Community", icon: "◎", color: "bg-emerald-100 text-emerald-700" },
+  { name: "Sports", icon: "↗", color: "bg-blue-100 text-blue-700" },
+  { name: "Business", icon: "＋", color: "bg-violet-100 text-violet-700" },
+];
+
+const money = (value: number) => (value === 0 ? "Free" : `₹${value.toLocaleString("en-IN")}`);
+const formatDate = (date: string) => new Date(`${date}T12:00:00`).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+const formatShortDate = (date: string) => new Date(`${date}T12:00:00`).toLocaleDateString("en-IN", { day: "2-digit", month: "short" });
+
+function useEventStore() {
+  const [events, setEvents] = useState<EventItem[]>(() => {
+    try {
+      const stored = localStorage.getItem("evently-events");
+      return stored ? JSON.parse(stored) : DEFAULT_EVENTS;
+    } catch { return DEFAULT_EVENTS; }
+  });
+  const [bookings, setBookings] = useState<Booking[]>(() => {
+    try {
+      const stored = localStorage.getItem("evently-bookings");
+      return stored ? JSON.parse(stored) : [];
+    } catch { return []; }
+  });
+  const saveBookings = (next: Booking[]) => { setBookings(next); localStorage.setItem("evently-bookings", JSON.stringify(next)); };
+  const saveEvents = (next: EventItem[]) => { setEvents(next); localStorage.setItem("evently-events", JSON.stringify(next)); };
+  return { events, bookings, saveBookings, saveEvents };
+}
+
+function Logo({ light = false }: { light?: boolean }) {
+  return <Link href="/" className={`flex items-center gap-2.5 font-black tracking-[-0.06em] text-[22px] ${light ? "text-white" : "text-[#15151a] dark:text-white"}`}><span className="grid h-8 w-8 place-items-center rounded-[10px] bg-[#f6c945] text-[#15151a] shadow-[0_5px_18px_rgba(246,201,69,.32)]"><Sparkles size={17} strokeWidth={2.8} /></span>evently</Link>;
+}
+
+function AppHeader({ compact = false }: { compact?: boolean }) {
+  const { theme, toggleTheme } = useTheme();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const nav = [{ label: "Explore", href: "/explore" }, { label: "For organizers", href: "/organizer" }, { label: "About", href: "/about" }];
+  return <header className={`relative z-30 border-b border-black/[.07] bg-[#fafaf8]/90 backdrop-blur-xl dark:border-white/[.08] dark:bg-[#141417]/90 ${compact ? "" : ""}`}>
+    <div className="container flex h-[72px] items-center justify-between gap-5">
+      <Logo />
+      <nav className="hidden items-center gap-7 text-[13px] font-semibold text-[#696971] md:flex dark:text-[#a7a7b2]">{nav.map(item => <Link key={item.href} href={item.href} className="transition-colors hover:text-[#15151a] dark:hover:text-white">{item.label}</Link>)}</nav>
+      <div className="flex items-center gap-2.5">
+        <button onClick={() => toggleTheme?.()} className="hidden h-9 w-9 place-items-center rounded-full border border-black/10 text-[#77777f] transition hover:bg-black/[.04] sm:grid dark:border-white/10 dark:text-[#c6c6ce] dark:hover:bg-white/[.06]" aria-label="Toggle theme">{theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}</button>
+        <Link href="/login" className="hidden px-2 text-[13px] font-bold text-[#696971] transition hover:text-[#15151a] sm:block dark:text-[#b7b7c2] dark:hover:text-white">Log in</Link>
+        <Link href="/explore" className="rounded-full bg-[#18181c] px-4 py-2.5 text-[12px] font-bold text-white shadow-[0_5px_15px_rgba(0,0,0,.12)] transition hover:-translate-y-0.5 dark:bg-white dark:text-[#15151a]">Find an event</Link>
+        <button className="grid h-9 w-9 place-items-center rounded-full border border-black/10 md:hidden dark:border-white/10" onClick={() => setMenuOpen(!menuOpen)}>{menuOpen ? <X size={17} /> : <Menu size={17} />}</button>
+      </div>
+    </div>
+    {menuOpen && <div className="container absolute left-0 right-0 top-[72px] border-b border-black/10 bg-[#fafaf8] py-4 shadow-lg md:hidden dark:border-white/10 dark:bg-[#141417]"><div className="flex flex-col gap-3 text-sm font-semibold">{nav.map(item => <Link onClick={() => setMenuOpen(false)} key={item.href} href={item.href}>{item.label}</Link>)}<Link href="/login" className="text-[#73737c]">Log in</Link></div></div>}
+  </header>;
+}
+
+function Footer() {
+  return <footer className="border-t border-black/[.07] bg-[#f3f3ef] py-12 dark:border-white/[.08] dark:bg-[#111113]"><div className="container grid gap-10 md:grid-cols-[1.3fr_1fr_1fr_1fr]"><div><Logo /><p className="mt-4 max-w-[240px] text-[13px] leading-6 text-[#85858d]">The place to find something worth leaving the house for.</p><div className="mt-5 flex gap-2"><span className="grid h-8 w-8 place-items-center rounded-full bg-black/[.06] text-[#77777f] dark:bg-white/[.08]"><Globe2 size={14} /></span><span className="grid h-8 w-8 place-items-center rounded-full bg-black/[.06] text-[#77777f] dark:bg-white/[.08]"><Mail size={14} /></span></div></div>{[["Discover", ["Explore events", "Music", "Technology", "Workshops"]], ["For organizers", ["Create an event", "Organizer dashboard", "Pricing", "Resources"]], ["Company", ["About Evently", "Contact", "Privacy", "Terms"]]].map(([title, items]) => <div key={title as string}><div className="mb-4 text-[11px] font-black uppercase tracking-[.16em] text-[#a0a0a6]">{title as string}</div><div className="flex flex-col gap-2.5 text-[13px] font-semibold text-[#68686f] dark:text-[#a6a6af]">{(items as string[]).map(item => <Link key={item} href={item === "Create an event" ? "/organizer/events/new" : item === "Organizer dashboard" ? "/organizer" : item === "About Evently" ? "/about" : item === "Contact" ? "/contact" : item === "Explore events" ? "/explore" : "/explore"} className="transition hover:text-[#15151a] dark:hover:text-white">{item}</Link>)}</div></div>)}</div><div className="container mt-12 flex flex-col justify-between gap-3 border-t border-black/[.07] pt-5 text-[11px] font-semibold text-[#9999a0] sm:flex-row dark:border-white/[.08]"><span>© 2026 Evently Technologies Pvt. Ltd.</span><span>Made for the moments between plans.</span></div></footer>;
+}
+
+function EventCard({ event, featured = false }: { event: EventItem; featured?: boolean }) {
+  return <Link href={`/events/${event.id}`} className={`group block overflow-hidden rounded-[20px] border border-black/[.08] bg-white transition duration-300 hover:-translate-y-1.5 hover:shadow-[0_18px_45px_rgba(25,25,35,.12)] dark:border-white/[.09] dark:bg-[#1c1c21] ${featured ? "" : ""}`}>
+    <div className={`relative overflow-hidden ${featured ? "aspect-[1.2]" : "aspect-[1.28]"}`}><img src={event.image} alt={event.title} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" /><div className={`absolute inset-0 bg-gradient-to-t ${event.gradient} opacity-70`} /><div className="absolute left-4 top-4 flex items-center gap-2"><span className="rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-black uppercase tracking-[.12em] text-[#24242a]">{event.category}</span>{event.featured && <span className="rounded-full bg-[#f6c945] px-2.5 py-1 text-[10px] font-black uppercase tracking-[.12em] text-[#24242a]">Featured</span>}</div><button onClick={e => { e.preventDefault(); toast.success("Saved to your shortlist"); }} className="absolute right-3 top-3 grid h-8 w-8 place-items-center rounded-full bg-black/20 text-white backdrop-blur-md transition hover:bg-white hover:text-[#15151a]"><Heart size={14} /></button><div className="absolute bottom-4 left-4 right-4 flex items-end justify-between text-white"><div><div className="mb-1 text-[11px] font-semibold text-white/75">{formatShortDate(event.date)} · {event.time.split("–")[0]}</div><h3 className="max-w-[250px] text-[22px] font-black leading-[1.05] tracking-[-.04em]">{event.title}</h3></div><ArrowUpRight size={19} className="mb-0.5 transition-transform group-hover:translate-x-1 group-hover:-translate-y-1" /></div></div>
+    <div className="flex items-center justify-between px-4 py-4"><div className="flex min-w-0 items-center gap-2 text-[12px] font-semibold text-[#818189] dark:text-[#a3a3ad]"><MapPin size={13} className="shrink-0" /><span className="truncate">{event.location}</span></div><div className="shrink-0 text-[13px] font-black text-[#19191e] dark:text-white">{money(event.price)}<span className="text-[10px] font-semibold text-[#9a9aa1]"> /person</span></div></div>
+  </Link>;
+}
+
+function SectionHeader({ eyebrow, title, action }: { eyebrow: string; title: string; action?: { label: string; href: string } }) {
+  return <div className="mb-6 flex items-end justify-between gap-4"><div><div className="mb-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-[.18em] text-[#a0a0a8]"><span className="h-1.5 w-1.5 rounded-full bg-[#f6c945]" />{eyebrow}</div><h2 className="text-[29px] font-black tracking-[-.055em] text-[#18181d] dark:text-white">{title}</h2></div>{action && <Link href={action.href} className="hidden items-center gap-1.5 text-[12px] font-black text-[#65656d] transition hover:text-[#15151a] sm:flex dark:text-[#bdbdc6] dark:hover:text-white">{action.label}<ArrowRight size={14} /></Link>}</div>;
+}
+
+function HomePage({ events }: { events: EventItem[] }) {
+  const [query, setQuery] = useState("");
+  const featured = events.filter(e => e.featured).slice(0, 3);
+  const search = () => { if (query.trim()) window.location.href = `/explore?search=${encodeURIComponent(query)}`; else window.location.href = "/explore"; };
+  return <><AppHeader /><main className="overflow-hidden"><section className="relative bg-[#f3f1ec] pb-20 pt-16 dark:bg-[#141417] md:pb-28 md:pt-24"><div className="container relative z-10 grid items-center gap-12 lg:grid-cols-[1.05fr_.95fr]"><div className="max-w-[650px]"><div className="mb-6 inline-flex items-center gap-2 rounded-full border border-[#e6dcae] bg-[#fff9d7] px-3 py-1.5 text-[10px] font-black uppercase tracking-[.16em] text-[#78671e] dark:border-[#665c2a] dark:bg-[#2b2714] dark:text-[#f2d65e]"><span className="h-1.5 w-1.5 rounded-full bg-[#e9bf19]" />Your next story starts here</div><h1 className="max-w-[720px] text-[58px] font-black leading-[.94] tracking-[-.075em] text-[#18181d] dark:text-white sm:text-[76px] lg:text-[92px]">Make room<br /><span className="relative inline-block text-[#7166e8]">for <span className="relative">more</span></span><span className="text-[#f6c945]">.</span></h1><p className="mt-7 max-w-[470px] text-[16px] leading-7 text-[#77777f] dark:text-[#a7a7b1]">Discover the concerts, conversations, workshops, and delightful detours that make a city feel alive.</p><div className="mt-9 flex max-w-[590px] flex-col gap-2 rounded-[16px] border border-black/[.08] bg-white p-2 shadow-[0_16px_40px_rgba(25,25,35,.08)] sm:flex-row dark:border-white/[.1] dark:bg-[#202025]"><div className="flex flex-1 items-center gap-3 px-3"><Search size={18} className="text-[#98989f]" /><input value={query} onChange={e => setQuery(e.target.value)} onKeyDown={e => e.key === "Enter" && search()} placeholder="What are you in the mood for?" className="h-10 w-full bg-transparent text-[13px] font-semibold outline-none placeholder:text-[#a4a4aa]" /></div><div className="hidden h-10 w-px bg-black/[.08] sm:block dark:bg-white/[.1]" /><button onClick={search} className="h-11 rounded-[11px] bg-[#18181c] px-6 text-[12px] font-black text-white transition hover:bg-[#35353c] dark:bg-[#f6c945] dark:text-[#15151a] dark:hover:bg-[#ffe57b]">Explore events</button></div><div className="mt-5 flex flex-wrap items-center gap-2 text-[11px] font-bold text-[#9a9aa1]"><span>Popular:</span>{["Live music", "Tech meetups", "Workshops"].map((item, i) => <button onClick={() => { setQuery(item); }} key={item} className="rounded-full bg-black/[.04] px-3 py-1.5 text-[#73737b] transition hover:bg-[#ece9dc] dark:bg-white/[.06] dark:text-[#b9b9c2]">{item}</button>)}</div></div><div className="relative mx-auto h-[375px] w-full max-w-[530px] sm:h-[470px]"><div className="absolute left-[11%] top-[8%] h-[77%] w-[68%] rotate-[-8deg] overflow-hidden rounded-[28px] border-[7px] border-white/90 bg-black shadow-[0_28px_65px_rgba(40,30,70,.22)] dark:border-[#292930]"><img src={IMAGES.festival} alt="Festival crowd" className="h-full w-full object-cover" /><div className="absolute inset-0 bg-gradient-to-t from-[#2c153f]/80 via-transparent to-fuchsia-500/10" /></div><div className="absolute bottom-[9%] right-[3%] w-[42%] rotate-[8deg] overflow-hidden rounded-[22px] border-[6px] border-white/90 bg-white shadow-[0_22px_45px_rgba(40,30,70,.2)] dark:border-[#292930]"><img src={IMAGES.community} alt="Community event" className="aspect-[1.1] w-full object-cover" /><div className="px-3 py-3"><div className="text-[9px] font-black uppercase tracking-[.13em] text-[#a0a0a7]">This weekend</div><div className="mt-1 text-[12px] font-black tracking-[-.03em]">Campus Create</div></div></div><div className="absolute right-[9%] top-[4%] grid h-[62px] w-[62px] rotate-[12deg] place-items-center rounded-full bg-[#f6c945] text-[#1a191b] shadow-[0_12px_30px_rgba(246,201,69,.35)]"><Sparkles size={23} /></div><div className="absolute bottom-[3%] left-[4%] rounded-2xl border border-white/30 bg-[#7166e8] px-4 py-3 text-white shadow-[0_14px_30px_rgba(84,73,180,.3)]"><div className="text-[9px] font-black uppercase tracking-[.14em] text-white/70">Tonight</div><div className="mt-0.5 text-[15px] font-black">Something good</div></div></div></div><div className="pointer-events-none absolute -bottom-20 -left-10 h-48 w-48 rounded-full bg-[#f6c945]/20 blur-3xl" /><div className="pointer-events-none absolute right-0 top-0 h-72 w-72 rounded-full bg-[#7166e8]/10 blur-3xl" /></section><section className="border-b border-black/[.06] bg-white py-9 dark:border-white/[.08] dark:bg-[#18181c]"><div className="container flex flex-wrap items-center justify-center gap-x-9 gap-y-4 md:justify-between"><span className="text-[11px] font-black uppercase tracking-[.15em] text-[#a2a2a9]">Find your kind of fun</span>{CATEGORIES.map(category => <Link href={`/explore?category=${category.name}`} key={category.name} className="group flex items-center gap-2 text-[13px] font-black text-[#55555d] transition hover:text-[#18181d] dark:text-[#b4b4bd] dark:hover:text-white"><span className={`grid h-8 w-8 place-items-center rounded-full text-[16px] transition group-hover:scale-110 ${category.color}`}>{category.icon}</span>{category.name}</Link>)}</div></section><section className="container py-20"><SectionHeader eyebrow="Curated for you" title="Worth making plans for" action={{ label: "See all events", href: "/explore" }} /><div className="grid gap-5 md:grid-cols-3">{featured.map(event => <EventCard key={event.id} event={event} featured />)}</div></section><section className="container pb-20"><div className="relative overflow-hidden rounded-[26px] bg-[#19191d] px-7 py-10 text-white sm:px-12 md:py-14"><div className="relative z-10 max-w-[560px]"><div className="mb-3 flex items-center gap-2 text-[10px] font-black uppercase tracking-[.18em] text-[#f6c945]"><Zap size={13} fill="currentColor" /> Made for moments that matter</div><h2 className="text-[35px] font-black leading-[1.02] tracking-[-.06em] sm:text-[46px]">Good events are<br /><span className="text-[#f6c945]">good energy.</span></h2><p className="mt-4 max-w-[460px] text-[14px] leading-6 text-white/55">From a sold-out arena to a table of six strangers becoming friends, Evently helps you find your people.</p><Link href="/about" className="mt-7 inline-flex items-center gap-2 rounded-full bg-white px-5 py-3 text-[12px] font-black text-[#18181d] transition hover:bg-[#f6c945]">Why Evently <ArrowUpRight size={15} /></Link></div><div className="absolute -right-10 -top-24 h-[310px] w-[310px] rounded-full border-[42px] border-[#7166e8]/35 sm:right-[8%]" /><div className="absolute -bottom-36 right-[10%] h-[370px] w-[370px] rounded-full border-[1px] border-[#f6c945]/30" /><div className="absolute bottom-7 right-9 hidden text-right md:block"><div className="text-[76px] font-black leading-none tracking-[-.08em] text-white/10">01</div><div className="text-[10px] font-black uppercase tracking-[.16em] text-white/30">Curiosity is a plan</div></div></div></section></main><Footer /></>;
+}
+
+function ExplorePage({ events }: { events: EventItem[] }) {
+  const initialSearch = new URLSearchParams(window.location.search).get("search") ?? "";
+  const initialCategory = new URLSearchParams(window.location.search).get("category") ?? "All events";
+  const [query, setQuery] = useState(initialSearch);
+  const [category, setCategory] = useState(initialCategory);
+  const [city, setCity] = useState("All cities");
+  const [sort, setSort] = useState("Recommended");
+  const filtered = useMemo(() => events.filter(event => {
+    const matchesQuery = !query || `${event.title} ${event.category} ${event.location} ${event.venue}`.toLowerCase().includes(query.toLowerCase());
+    const matchesCategory = category === "All events" || event.category === category;
+    const matchesCity = city === "All cities" || event.location.startsWith(city);
+    return matchesQuery && matchesCategory && matchesCity;
+  }).sort((a, b) => sort === "Price: low to high" ? a.price - b.price : sort === "Soonest" ? a.date.localeCompare(b.date) : 0), [events, query, category, city, sort]);
+  return <><AppHeader /><main className="container py-12 md:py-16"><div className="max-w-[690px]"><div className="mb-3 text-[10px] font-black uppercase tracking-[.18em] text-[#a0a0a8]">Explore the good stuff</div><h1 className="text-[48px] font-black leading-none tracking-[-.07em] md:text-[68px]">Find an event<br /><span className="text-[#7166e8]">you’ll talk about.</span></h1><p className="mt-5 text-[15px] leading-7 text-[#7b7b83] dark:text-[#a7a7b1]">A fresh shortlist of things happening near you, from big nights out to small rooms full of ideas.</p></div><div className="mt-10 flex flex-col gap-3 lg:flex-row"><div className="flex h-12 flex-1 items-center gap-3 rounded-[13px] border border-black/10 bg-white px-4 dark:border-white/10 dark:bg-[#1c1c21]"><Search size={17} className="text-[#9a9aa1]" /><input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search by event, city, or vibe" className="w-full bg-transparent text-[13px] font-semibold outline-none placeholder:text-[#a4a4aa]" /></div><div className="flex gap-3"><select value={city} onChange={e => setCity(e.target.value)} className="h-12 min-w-[142px] rounded-[13px] border border-black/10 bg-white px-3 text-[12px] font-bold outline-none dark:border-white/10 dark:bg-[#1c1c21]"><option>All cities</option><option>Mumbai</option><option>Bengaluru</option><option>Delhi</option><option>Pune</option><option>Hyderabad</option></select><select value={sort} onChange={e => setSort(e.target.value)} className="h-12 min-w-[142px] rounded-[13px] border border-black/10 bg-white px-3 text-[12px] font-bold outline-none dark:border-white/10 dark:bg-[#1c1c21]"><option>Recommended</option><option>Soonest</option><option>Price: low to high</option></select></div></div><div className="mt-7 flex gap-2 overflow-x-auto pb-2">{["All events", ...CATEGORIES.map(c => c.name)].map(item => <button key={item} onClick={() => setCategory(item)} className={`shrink-0 rounded-full px-4 py-2.5 text-[11px] font-black transition ${category === item ? "bg-[#18181c] text-white dark:bg-[#f6c945] dark:text-[#15151a]" : "bg-black/[.04] text-[#77777f] hover:bg-black/[.08] dark:bg-white/[.06] dark:text-[#b7b7c0]"}`}>{item}</button>)}</div><div className="mt-12 flex items-end justify-between"><div><div className="text-[11px] font-black uppercase tracking-[.16em] text-[#a0a0a8]">{filtered.length} results</div><h2 className="mt-2 text-[26px] font-black tracking-[-.05em]">Events for your calendar</h2></div><button className="hidden items-center gap-2 text-[12px] font-bold text-[#77777f] sm:flex"><SlidersIcon /> More filters</button></div>{filtered.length > 0 ? <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{filtered.map(event => <EventCard key={event.id} event={event} />)}</div> : <div className="mt-6 rounded-[22px] border border-dashed border-black/15 bg-white px-6 py-20 text-center dark:border-white/15 dark:bg-[#1c1c21]"><div className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-[#f6c945]/20 text-[#8a741b]"><Search size={19} /></div><h3 className="mt-4 text-[18px] font-black">No events match that search</h3><p className="mt-2 text-[13px] text-[#85858d]">Try a different city, category, or search term.</p><button onClick={() => { setQuery(""); setCategory("All events"); setCity("All cities"); }} className="mt-5 rounded-full bg-[#18181c] px-4 py-2.5 text-[12px] font-black text-white dark:bg-white dark:text-[#15151a]">Reset filters</button></div>}</main><Footer /></>;
+}
+function SlidersIcon() { return <span className="relative block h-3.5 w-4"><span className="absolute left-0 top-1 block h-px w-4 bg-current" /><span className="absolute left-0 top-3 block h-px w-4 bg-current" /><span className="absolute left-2 top-0 h-2 w-px bg-current" /><span className="absolute left-3 top-2 h-2 w-px bg-current" /></span>; }
+
+function EventDetailsPage({ event, events }: { event: EventItem; events: EventItem[] }) {
+  const [, navigate] = useLocation();
+  const [quantity, setQuantity] = useState(1);
+  const [ticketIndex, setTicketIndex] = useState(0);
+  const selected = event.tickets[ticketIndex] ?? event.tickets[0];
+  const related = events.filter(item => item.id !== event.id && item.category === event.category).slice(0, 2);
+  return <><AppHeader /><main><div className="container pt-8"><Link href="/explore" className="inline-flex items-center gap-2 text-[12px] font-bold text-[#85858d] transition hover:text-[#15151a] dark:hover:text-white"><ArrowLeft size={14} /> Back to explore</Link></div><section className="container mt-7 grid gap-8 lg:grid-cols-[1.12fr_.88fr]"><div><div className="relative overflow-hidden rounded-[26px] bg-black"><img src={event.image} alt={event.title} className="aspect-[1.35] w-full object-cover" /><div className={`absolute inset-0 bg-gradient-to-t ${event.gradient} opacity-60`} /><div className="absolute bottom-6 left-6 right-6 text-white md:bottom-8 md:left-9"><span className="rounded-full bg-white/90 px-3 py-1.5 text-[10px] font-black uppercase tracking-[.14em] text-[#24242a]">{event.category}</span><h1 className="mt-3 max-w-[650px] text-[42px] font-black leading-[.96] tracking-[-.07em] md:text-[64px]">{event.title}</h1></div></div><div className="mt-8 grid gap-4 sm:grid-cols-3"><Meta icon={<CalendarDays size={16} />} label="Date" value={formatDate(event.date)} /><Meta icon={<Clock3 size={16} />} label="Time" value={event.time} /><Meta icon={<MapPin size={16} />} label="Location" value={event.venue} /></div><div className="mt-10 max-w-[680px]"><div className="mb-3 text-[10px] font-black uppercase tracking-[.16em] text-[#a0a0a8]">The idea</div><h2 className="text-[27px] font-black tracking-[-.05em]">Come for the plan. Stay for the story.</h2><p className="mt-4 text-[15px] leading-7 text-[#76767f] dark:text-[#a8a8b2]">{event.description}</p><div className="mt-7 flex items-center gap-3 rounded-2xl bg-[#f3f1ec] p-4 dark:bg-[#1c1c21]"><div className="grid h-10 w-10 place-items-center rounded-full bg-[#7166e8] text-sm font-black text-white">{event.organizer.slice(0, 1)}</div><div><div className="text-[11px] font-black uppercase tracking-[.14em] text-[#a0a0a8]">Presented by</div><div className="mt-0.5 text-[14px] font-black">{event.organizer}</div><div className="text-[11px] text-[#8a8a92]">{event.organizerRole}</div></div><Link href="/about" className="ml-auto text-[11px] font-black text-[#7166e8]">View profile</Link></div></div></div><aside className="lg:pt-9"><div className="sticky top-5 rounded-[22px] border border-black/[.08] bg-white p-5 shadow-[0_18px_50px_rgba(25,25,35,.08)] dark:border-white/[.1] dark:bg-[#1c1c21]"><div className="flex items-start justify-between"><div><div className="text-[11px] font-black uppercase tracking-[.15em] text-[#a0a0a8]">Choose your ticket</div><div className="mt-2 text-[26px] font-black tracking-[-.05em]">You’re invited.</div></div><div className="rounded-xl bg-[#e9f6ed] px-2.5 py-1.5 text-[10px] font-black text-[#37824d]">{event.remaining} left</div></div><div className="mt-6 flex flex-col gap-2">{event.tickets.map((ticket, i) => <button key={ticket.name} onClick={() => setTicketIndex(i)} className={`flex items-center justify-between rounded-[14px] border p-4 text-left transition ${ticketIndex === i ? "border-[#7166e8] bg-[#f2f0ff] dark:bg-[#282545]" : "border-black/[.08] hover:border-[#b9b1ff] dark:border-white/[.1]"}`}><div><div className="text-[13px] font-black">{ticket.name}</div><div className="mt-1 text-[11px] font-semibold text-[#8c8c94]">{ticket.description}</div></div><div className="text-right"><div className="text-[14px] font-black">{money(ticket.price)}</div>{ticketIndex === i && <div className="mt-1 text-[10px] font-bold text-[#7166e8]">Selected</div>}</div></button>)}</div><div className="mt-5 flex items-center justify-between rounded-[13px] bg-[#f6f6f3] px-4 py-3 dark:bg-[#25252b]"><span className="text-[12px] font-bold text-[#77777f]">Quantity</span><div className="flex items-center gap-3"><button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="grid h-7 w-7 place-items-center rounded-full bg-white text-lg shadow-sm dark:bg-[#34343b]">−</button><span className="w-4 text-center text-[13px] font-black">{quantity}</span><button onClick={() => setQuantity(Math.min(quantity + 1, Math.min(10, event.remaining)))} className="grid h-7 w-7 place-items-center rounded-full bg-white text-lg shadow-sm dark:bg-[#34343b]">＋</button></div></div><div className="mt-5 flex items-center justify-between border-t border-black/[.08] pt-4 dark:border-white/[.1]"><span className="text-[12px] font-bold text-[#77777f]">Total</span><span className="text-[22px] font-black tracking-[-.05em]">{money(selected.price * quantity)}</span></div><button onClick={() => navigate(`/checkout/${event.id}?ticket=${ticketIndex}&qty=${quantity}`)} className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-[12px] bg-[#18181c] text-[12px] font-black text-white transition hover:bg-[#7166e8] dark:bg-[#f6c945] dark:text-[#15151a] dark:hover:bg-[#ffe57b]">Continue to checkout <ArrowRight size={15} /></button><div className="mt-4 flex items-center justify-center gap-1.5 text-[10px] font-bold text-[#9b9ba2]"><ShieldCheck size={13} className="text-[#5baf6f]" /> Secure payments via Stripe test mode</div></div></aside></section>{related.length > 0 && <section className="container py-20"><SectionHeader eyebrow="Keep exploring" title="More like this" action={{ label: "See all", href: "/explore" }} /><div className="grid gap-5 sm:grid-cols-2">{related.map(item => <EventCard key={item.id} event={item} />)}</div></section>}</main><Footer /></>;
+}
+function Meta({ icon, label, value }: { icon: ReactNode; label: string; value: string }) { return <div className="rounded-2xl bg-[#f3f1ec] p-4 dark:bg-[#1c1c21]"><div className="flex items-center gap-2 text-[#7166e8]"><span>{icon}</span><span className="text-[10px] font-black uppercase tracking-[.15em] text-[#97979f]">{label}</span></div><div className="mt-2 truncate text-[13px] font-black">{value}</div></div>; }
+
+function CheckoutPage({ event, events, bookings, saveBookings, saveEvents }: { event: EventItem; events: EventItem[]; bookings: Booking[]; saveBookings: (bookings: Booking[]) => void; saveEvents: (events: EventItem[]) => void }) {
+  const [, navigate] = useLocation();
+  const params = new URLSearchParams(window.location.search);
+  const ticketIndex = Number(params.get("ticket") ?? 0);
+  const requestedQuantity = Math.max(1, Number(params.get("qty") ?? 1));
+  const ticket = event.tickets[ticketIndex] ?? event.tickets[0];
+  const [quantity, setQuantity] = useState(Math.min(requestedQuantity, event.remaining));
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [card, setCard] = useState("");
+  const [loading, setLoading] = useState(false);
+  const subtotal = ticket.price * quantity;
+  const fees = Math.round(subtotal * 0.04);
+  const total = subtotal + fees;
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim() || !email.includes("@") || card.replace(/\s/g, "").length < 16) { toast.error("Please complete your attendee and test card details."); return; }
+    if (quantity > event.remaining) { toast.error("That quantity is no longer available."); return; }
+    setLoading(true);
+    setTimeout(() => {
+      const booking: Booking = { id: `EVT-${Math.random().toString(36).slice(2, 8).toUpperCase()}`, eventId: event.id, eventTitle: event.title, date: event.date, location: event.location, ticket: ticket.name, quantity, total, attendee: name, email };
+      saveBookings([booking, ...bookings]);
+      saveEvents(events.map(item => item.id === event.id ? { ...item, remaining: item.remaining - quantity, tickets: item.tickets.map(t => t.name === ticket.name ? { ...t, available: t.available - quantity } : t) } : item));
+      toast.success("Payment successful — your ticket is ready!");
+      navigate(`/confirmation?id=${booking.id}`);
+      setLoading(false);
+    }, 900);
+  };
+  return <><AppHeader /><main className="container max-w-[1040px] py-10 md:py-16"><div className="mb-8 flex items-center gap-3 text-[11px] font-black uppercase tracking-[.15em] text-[#a0a0a8]"><Link href={`/events/${event.id}`} className="transition hover:text-[#15151a] dark:hover:text-white">Event</Link><ChevronRight size={13} /><span className="text-[#7166e8]">Checkout</span></div><div className="grid gap-8 lg:grid-cols-[1fr_380px]"><div><h1 className="text-[44px] font-black leading-none tracking-[-.07em] md:text-[58px]">A good plan<br /><span className="text-[#7166e8]">starts here.</span></h1><p className="mt-4 text-[14px] text-[#84848c]">Complete your details and you’ll be on your way.</p><form onSubmit={submit} className="mt-10 space-y-8"><div><StepTitle number="01" title="Attendee details" /><div className="mt-4 grid gap-4 sm:grid-cols-2"><Field label="Full name" placeholder="Aarav Sharma" value={name} onChange={setName} /><Field label="Email address" type="email" placeholder="aarav@email.com" value={email} onChange={setEmail} /></div></div><div><StepTitle number="02" title="Payment" /><div className="mt-4 rounded-[16px] border border-black/[.1] bg-white p-4 dark:border-white/[.1] dark:bg-[#1c1c21]"><div className="mb-4 flex items-center justify-between"><div className="flex items-center gap-2 text-[12px] font-black"><div className="grid h-7 w-7 place-items-center rounded-md bg-[#635bff] text-white"><CreditCard size={14} /></div> Stripe test mode</div><div className="flex gap-1 text-[10px] font-bold text-[#8d8d95]"><ShieldCheck size={13} className="text-[#5baf6f]" /> PCI secure</div></div><label className="text-[11px] font-black text-[#73737b]">Card number</label><div className="mt-2 flex h-11 items-center gap-3 rounded-[10px] border border-black/10 px-3 dark:border-white/10"><CreditCard size={16} className="text-[#9999a1]" /><input value={card} onChange={e => setCard(e.target.value)} placeholder="4242 4242 4242 4242" inputMode="numeric" className="w-full bg-transparent text-[13px] font-semibold outline-none" /></div><div className="mt-3 grid grid-cols-2 gap-3"><div className="rounded-[10px] border border-black/10 px-3 py-3 text-[12px] font-semibold text-[#9a9aa1] dark:border-white/10">MM / YY</div><div className="rounded-[10px] border border-black/10 px-3 py-3 text-[12px] font-semibold text-[#9a9aa1] dark:border-white/10">CVC</div></div><p className="mt-3 flex items-center gap-1.5 text-[10px] font-semibold text-[#9999a1]"><Info size={12} /> Use 4242 4242 4242 4242 for a successful test payment.</p></div></div><div className="flex items-center gap-3 text-[11px] font-semibold text-[#8b8b93]"><div className="grid h-5 w-5 place-items-center rounded-full border border-black/15"><Check size={11} /></div>I agree to the event terms and cancellation policy.</div><button disabled={loading} type="submit" className="flex h-13 w-full items-center justify-center gap-2 rounded-[13px] bg-[#18181c] py-4 text-[13px] font-black text-white transition hover:bg-[#7166e8] disabled:opacity-60 dark:bg-[#f6c945] dark:text-[#15151a]">{loading ? "Processing secure payment…" : `Pay ${money(total)}`}<ArrowRight size={16} /></button></form></div><aside><div className="sticky top-5 rounded-[22px] bg-[#f3f1ec] p-5 dark:bg-[#1c1c21]"><div className="text-[11px] font-black uppercase tracking-[.15em] text-[#a0a0a8]">Order summary</div><div className="mt-4 flex gap-3"><img src={event.image} alt="" className="h-20 w-24 rounded-[12px] object-cover" /><div><div className="text-[14px] font-black leading-tight">{event.title}</div><div className="mt-1 text-[11px] font-semibold text-[#85858d]">{formatDate(event.date)} · {event.time.split("–")[0]}</div><div className="mt-1 text-[11px] font-semibold text-[#85858d]">{event.venue}</div></div></div><div className="my-5 border-t border-black/10 dark:border-white/10" /><div className="flex items-center justify-between text-[12px] font-semibold text-[#7d7d85]"><span>{ticket.name}</span><div className="flex items-center gap-2"><button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="grid h-6 w-6 place-items-center rounded-full bg-white shadow-sm dark:bg-[#34343b]">−</button><span>{quantity}</span><button onClick={() => setQuantity(Math.min(event.remaining, quantity + 1))} className="grid h-6 w-6 place-items-center rounded-full bg-white shadow-sm dark:bg-[#34343b]">＋</button></div></div><div className="mt-3 flex justify-between text-[12px] font-semibold text-[#7d7d85]"><span>Subtotal</span><span>{money(subtotal)}</span></div><div className="mt-3 flex justify-between text-[12px] font-semibold text-[#7d7d85]"><span>Service fee</span><span>{money(fees)}</span></div><div className="mt-5 flex justify-between border-t border-black/10 pt-4 text-[15px] font-black dark:border-white/10"><span>Total</span><span>{money(total)}</span></div><div className="mt-5 flex items-center gap-2 text-[10px] font-bold text-[#888890]"><TicketCheck size={15} className="text-[#7166e8]" /> Instant confirmation + QR ticket</div></div></aside></div></main></>;
+}
+function StepTitle({ number, title }: { number: string; title: string }) { return <div className="flex items-center gap-3"><span className="text-[10px] font-black tracking-[.15em] text-[#7166e8]">{number}</span><h2 className="text-[20px] font-black tracking-[-.04em]">{title}</h2></div>; }
+function Field({ label, placeholder, value, onChange, type = "text" }: { label: string; placeholder: string; value: string; onChange: (value: string) => void; type?: string }) { return <label className="block"><span className="text-[11px] font-black text-[#73737b]">{label}</span><input type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} className="mt-2 h-11 w-full rounded-[10px] border border-black/10 bg-white px-3 text-[13px] font-semibold outline-none transition focus:border-[#7166e8] dark:border-white/10 dark:bg-[#1c1c21]" /></label>; }
+
+function QrTicket({ id }: { id: string }) { const pattern = (id.replace(/[^A-Z0-9]/g, "") + "EVENTLY2026").split("").flatMap(char => char.charCodeAt(0).toString(2).padStart(8, "0").split("")); return <div className="grid grid-cols-13 gap-[2px] rounded-[5px] bg-white p-2 shadow-[0_5px_15px_rgba(0,0,0,.08)]">{Array.from({ length: 169 }, (_, i) => <span key={i} className={`aspect-square ${pattern[i % pattern.length] === "1" || [0,1,2,10,11,12,13,23,25,26,36,37,38,130,131,132,142,144,145,155,156,157,166,167,168].includes(i) ? "bg-[#15151a]" : "bg-white"}`} />)}</div>; }
+function ConfirmationPage({ event, booking }: { event: EventItem; booking?: Booking }) {
+  const detail = booking ?? { id: "EVT-DEMO24", eventTitle: event.title, date: event.date, location: event.location, ticket: event.tickets[0].name, quantity: 1, total: event.tickets[0].price, attendee: "Demo attendee", email: "demo@evently.com", eventId: event.id };
+  const downloadInvoice = () => { window.print(); toast.success("Invoice ready — choose ‘Save as PDF’ in the print dialog."); };
+  return <><AppHeader /><main className="container max-w-[920px] py-12 md:py-20"><div className="mx-auto max-w-[620px] text-center"><div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-[#e6f6e9] text-[#48a660] shadow-[0_0_0_10px_rgba(72,166,96,.08)]"><CheckCircle2 size={29} /></div><div className="mt-7 text-[11px] font-black uppercase tracking-[.2em] text-[#53a667]">Booking confirmed</div><h1 className="mt-3 text-[48px] font-black leading-[.94] tracking-[-.08em] md:text-[66px]">You’re on the list.</h1><p className="mx-auto mt-5 max-w-[470px] text-[14px] leading-6 text-[#85858d]">We’ve sent the details to <span className="font-black text-[#44444c] dark:text-white">{detail.email}</span>. Keep this ticket handy — you’re going to have a good time.</p></div><div className="mx-auto mt-12 grid max-w-[760px] overflow-hidden rounded-[24px] border border-black/[.09] bg-white shadow-[0_20px_60px_rgba(25,25,35,.08)] md:grid-cols-[1fr_240px] dark:border-white/[.1] dark:bg-[#1c1c21]"><div className="p-6 md:p-8"><div className="flex items-start justify-between gap-4"><div><div className="text-[10px] font-black uppercase tracking-[.16em] text-[#a0a0a8]">Evently ticket</div><h2 className="mt-3 text-[28px] font-black leading-tight tracking-[-.05em]">{detail.eventTitle}</h2></div><div className="rounded-full bg-[#f6c945] px-3 py-1.5 text-[10px] font-black uppercase tracking-[.12em] text-[#393214]">Confirmed</div></div><div className="mt-8 grid gap-5 sm:grid-cols-2"><Meta icon={<CalendarDays size={16} />} label="Date & time" value={`${formatDate(detail.date)} · ${event.time.split("–")[0]}`} /><Meta icon={<MapPin size={16} />} label="Venue" value={`${event.venue}, ${detail.location.split(",")[0]}`} /><Meta icon={<Ticket size={16} />} label="Ticket" value={`${detail.ticket} × ${detail.quantity}`} /><Meta icon={<CircleDollarSign size={16} />} label="Paid" value={money(detail.total)} /></div><div className="mt-8 flex items-center justify-between border-t border-black/[.08] pt-5 text-[11px] dark:border-white/[.1]"><span className="font-bold text-[#9999a1]">Booking ID</span><span className="font-black tracking-[.08em]">{detail.id}</span></div></div><div className="flex flex-col items-center justify-center gap-4 border-t border-black/[.08] bg-[#f8f8f5] p-6 md:border-l md:border-t-0 dark:border-white/[.1] dark:bg-[#17171b]"><QrTicket id={detail.id} /><div className="text-center"><div className="text-[10px] font-black uppercase tracking-[.15em] text-[#898991]">Scan at entry</div><div className="mt-1 text-[10px] font-semibold text-[#aaaab1]">One-time access pass</div></div></div></div><div className="mx-auto mt-5 flex max-w-[760px] flex-col justify-between gap-3 sm:flex-row"><button onClick={downloadInvoice} className="flex items-center justify-center gap-2 rounded-full border border-black/10 px-5 py-3 text-[12px] font-black transition hover:bg-black/[.04] dark:border-white/10 dark:hover:bg-white/[.06]"><Download size={14} /> Download invoice</button><Link href="/dashboard" className="flex items-center justify-center gap-2 rounded-full bg-[#18181c] px-5 py-3 text-[12px] font-black text-white dark:bg-[#f6c945] dark:text-[#15151a]">View my tickets <ArrowRight size={14} /></Link></div></main><div className="print-only"><h1>Evently invoice</h1><p>{detail.eventTitle}</p><p>Booking ID: {detail.id}</p><p>Attendee: {detail.attendee} · {detail.email}</p><p>Total paid: {money(detail.total)}</p></div><Footer /></>;
+}
+
+function DashboardShell({ title, eyebrow, children, active = "Overview" }: { title: string; eyebrow: string; children: ReactNode; active?: string }) {
+  const [, navigate] = useLocation();
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const items = [{ label: "Overview", icon: <LayoutDashboard size={16} />, href: "/dashboard" }, { label: "My tickets", icon: <Ticket size={16} />, href: "/dashboard" }, { label: "Invoices", icon: <FileText size={16} />, href: "/dashboard" }, { label: "Settings", icon: <Settings size={16} />, href: "/dashboard" }];
+  return <div className="min-h-screen bg-[#f5f5f1] dark:bg-[#121215]"><div className="flex min-h-screen"><aside className={`${mobileOpen ? "translate-x-0" : "-translate-x-full"} fixed inset-y-0 left-0 z-40 w-[248px] border-r border-black/[.08] bg-[#fafaf8] p-5 transition-transform md:relative md:translate-x-0 dark:border-white/[.08] dark:bg-[#18181c]`}><div className="flex items-center justify-between"><Logo /><button onClick={() => setMobileOpen(false)} className="md:hidden"><X size={17} /></button></div><div className="mt-12 text-[10px] font-black uppercase tracking-[.18em] text-[#a2a2a9]">Workspace</div><nav className="mt-3 flex flex-col gap-1">{items.map(item => <button onClick={() => navigate(item.href)} key={item.label} className={`flex items-center gap-3 rounded-[11px] px-3 py-3 text-left text-[12px] font-bold transition ${active === item.label ? "bg-[#ece9df] text-[#18181d] dark:bg-white/[.08] dark:text-white" : "text-[#85858d] hover:bg-black/[.03] dark:hover:bg-white/[.05]"}`}>{item.icon}{item.label}{item.label === "My tickets" && <span className="ml-auto rounded-full bg-[#f6c945] px-1.5 py-0.5 text-[9px] font-black text-[#3c3418]">{1}</span>}</button>)}</nav><div className="mt-10 border-t border-black/[.08] pt-6 dark:border-white/[.08]"><Link href="/organizer" className="flex items-center gap-3 rounded-[11px] px-3 py-3 text-[12px] font-bold text-[#85858d] transition hover:bg-black/[.03] dark:hover:bg-white/[.05]"><BarChart3 size={16} /> Organizer view</Link><Link href="/" className="mt-1 flex items-center gap-3 rounded-[11px] px-3 py-3 text-[12px] font-bold text-[#85858d] transition hover:bg-black/[.03] dark:hover:bg-white/[.05]"><LogOut size={16} /> Back to Evently</Link></div><div className="absolute bottom-5 left-5 right-5 flex items-center gap-3 rounded-[13px] bg-[#f0eee7] p-3 dark:bg-[#222227]"><div className="grid h-8 w-8 place-items-center rounded-full bg-[#7166e8] text-[11px] font-black text-white">AS</div><div className="min-w-0"><div className="truncate text-[11px] font-black">Aarav Sharma</div><div className="truncate text-[10px] font-semibold text-[#9999a1]">aarav@email.com</div></div><MoreHorizontal size={15} className="ml-auto text-[#9a9aa1]" /></div></aside>{mobileOpen && <div onClick={() => setMobileOpen(false)} className="fixed inset-0 z-30 bg-black/30 md:hidden" />}<main className="min-w-0 flex-1"><div className="border-b border-black/[.08] bg-[#fafaf8]/90 dark:border-white/[.08] dark:bg-[#18181c]"><div className="flex h-[72px] items-center justify-between px-5 md:px-10"><button onClick={() => setMobileOpen(true)} className="md:hidden"><Menu size={18} /></button><div className="hidden md:block"><div className="text-[10px] font-black uppercase tracking-[.18em] text-[#a0a0a8]">{eyebrow}</div><div className="mt-1 text-[14px] font-black">{title}</div></div><div className="ml-auto flex items-center gap-3"><button onClick={() => toast.success("You’re all caught up")} className="relative grid h-9 w-9 place-items-center rounded-full border border-black/10 text-[#85858d] dark:border-white/10"><span className="absolute right-2 top-1.5 h-1.5 w-1.5 rounded-full bg-[#f6c945]" /><Info size={15} /></button><button onClick={() => toast("Profile settings are ready in the next release")} className="grid h-9 w-9 place-items-center rounded-full bg-[#7166e8] text-[10px] font-black text-white">AS</button></div></div></div><div className="p-5 md:p-10">{children}</div></main></div></div>;
+}
+
+function UserDashboard({ bookings }: { bookings: Booking[] }) {
+  const latest = bookings[0];
+  const displayBooking = latest ?? { id: "EVT-DEMO24", eventId: "neon-futures", eventTitle: "Neon Futures Festival", date: "2026-10-24", location: "Mumbai, Maharashtra", ticket: "General Admission", quantity: 2, total: 3118, attendee: "Aarav Sharma", email: "aarav@email.com" };
+  return <DashboardShell title="Your event calendar" eyebrow="Good afternoon, Aarav"><div className="flex flex-col justify-between gap-5 md:flex-row md:items-end"><div><div className="text-[10px] font-black uppercase tracking-[.18em] text-[#a0a0a8]">Your event calendar</div><h1 className="mt-2 text-[38px] font-black tracking-[-.07em] md:text-[50px]">Make some memories.</h1><p className="mt-3 text-[13px] text-[#85858d]">Your next good idea is probably on this page.</p></div><Link href="/explore" className="flex w-fit items-center gap-2 rounded-full bg-[#18181c] px-4 py-3 text-[11px] font-black text-white dark:bg-[#f6c945] dark:text-[#15151a]">Discover events <ArrowUpRight size={14} /></Link></div><div className="mt-9 grid gap-4 sm:grid-cols-3"><Stat label="Upcoming events" value={String(bookings.length || 1)} icon={<CalendarDays size={17} />} accent="purple" /><Stat label="Tickets booked" value={String(bookings.reduce((sum, b) => sum + b.quantity, 0) || 2)} icon={<Ticket size={17} />} accent="yellow" /><Stat label="Cities explored" value="04" icon={<MapPin size={17} />} accent="green" /></div><div className="mt-10 grid gap-5 xl:grid-cols-[1.35fr_.65fr]"><div className="rounded-[20px] border border-black/[.08] bg-white p-5 md:p-6 dark:border-white/[.09] dark:bg-[#1c1c21]"><div className="flex items-center justify-between"><div><div className="text-[10px] font-black uppercase tracking-[.16em] text-[#a0a0a8]">Your next event</div><h2 className="mt-2 text-[24px] font-black tracking-[-.05em]">{displayBooking.eventTitle}</h2></div><span className="rounded-full bg-[#e6f6e9] px-2.5 py-1 text-[10px] font-black text-[#439156]">Confirmed</span></div><div className="mt-5 flex flex-col gap-5 rounded-[15px] bg-[#f4f2ec] p-4 sm:flex-row sm:items-center dark:bg-[#25252b]"><img src={DEFAULT_EVENTS.find(e => e.id === displayBooking.eventId)?.image ?? IMAGES.festival} alt="" className="h-28 w-full rounded-[12px] object-cover sm:w-36" /><div className="min-w-0 flex-1"><div className="flex items-center gap-2 text-[12px] font-black"><CalendarDays size={14} className="text-[#7166e8]" />{formatDate(displayBooking.date)} · {DEFAULT_EVENTS.find(e => e.id === displayBooking.eventId)?.time}</div><div className="mt-2 flex items-center gap-2 text-[12px] font-semibold text-[#85858d]"><MapPin size={14} />{displayBooking.location}</div><div className="mt-3 text-[11px] font-black text-[#7166e8]">{displayBooking.ticket} · {displayBooking.quantity} {displayBooking.quantity === 1 ? "ticket" : "tickets"}</div></div><Link href={`/confirmation?id=${displayBooking.id}`} className="flex shrink-0 items-center gap-1.5 rounded-full bg-white px-3 py-2 text-[11px] font-black shadow-sm dark:bg-[#34343b]">View ticket <ArrowRight size={13} /></Link></div></div><div className="rounded-[20px] bg-[#7166e8] p-6 text-white"><div className="flex items-center justify-between"><div className="text-[10px] font-black uppercase tracking-[.16em] text-white/60">Your vibe report</div><Sparkles size={17} className="text-[#f6c945]" /></div><div className="mt-8 text-[36px] font-black leading-none tracking-[-.07em]">Curious<br />with a side<br /><span className="text-[#f6c945]">of chaos.</span></div><p className="mt-5 text-[12px] leading-5 text-white/65">You’ve explored music, ideas, and workshops this month. Keep going.</p><Link href="/explore" className="mt-7 inline-flex items-center gap-2 text-[11px] font-black text-[#f6c945]">See what’s next <ArrowRight size={14} /></Link></div></div><div className="mt-8 rounded-[20px] border border-black/[.08] bg-white p-5 dark:border-white/[.09] dark:bg-[#1c1c21]"><div className="flex items-center justify-between"><h2 className="text-[19px] font-black tracking-[-.04em]">Your recent bookings</h2><button onClick={() => toast("All invoices are available from your booking confirmation.")} className="text-[11px] font-black text-[#7166e8]">View invoices</button></div><div className="mt-4 divide-y divide-black/[.07] dark:divide-white/[.08]">{(bookings.length ? bookings : [displayBooking]).slice(0, 4).map((booking, index) => <div key={booking.id + index} className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center"><div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#f2f0ff] text-[#7166e8] dark:bg-[#282545]"><TicketCheck size={17} /></div><div className="min-w-0 flex-1"><div className="truncate text-[13px] font-black">{booking.eventTitle}</div><div className="mt-1 text-[11px] font-semibold text-[#8c8c94]">{formatDate(booking.date)} · {booking.ticket}</div></div><div className="text-left sm:text-right"><div className="text-[13px] font-black">{money(booking.total)}</div><div className="mt-1 text-[10px] font-bold text-[#4aa260]">Paid successfully</div></div><Link href={`/confirmation?id=${booking.id}`} className="grid h-8 w-8 place-items-center rounded-full bg-black/[.04] text-[#77777f] dark:bg-white/[.06]"><ArrowUpRight size={14} /></Link></div>)}</div></div></DashboardShell>;
+}
+function Stat({ label, value, icon, accent }: { label: string; value: string; icon: ReactNode; accent: "purple" | "yellow" | "green" }) { const colors = { purple: "bg-[#f2f0ff] text-[#7166e8]", yellow: "bg-[#fff8d6] text-[#9a7e15]", green: "bg-[#e6f6e9] text-[#4b9d5f]" }; return <div className="flex items-center gap-3 rounded-[17px] border border-black/[.08] bg-white p-4 dark:border-white/[.09] dark:bg-[#1c1c21]"><div className={`grid h-10 w-10 place-items-center rounded-xl ${colors[accent]}`}>{icon}</div><div><div className="text-[11px] font-bold text-[#8c8c94]">{label}</div><div className="mt-1 text-[23px] font-black tracking-[-.05em]">{value}</div></div></div>; }
+
+function OrganizerDashboard({ events, saveEvents }: { events: EventItem[]; saveEvents: (events: EventItem[]) => void }) {
+  const totalRevenue = events.reduce((sum, event) => sum + (event.attendees === "2.4k" ? 382000 : event.attendees === "1.1k" ? 291000 : 138500), 0);
+  const deleteEvent = (id: string) => { saveEvents(events.filter(event => event.id !== id)); toast.success("Event removed from your workspace"); };
+  return <DashboardShell title="Organizer workspace" eyebrow="Afterglow Collective" active="Overview"><div className="flex flex-col justify-between gap-5 md:flex-row md:items-end"><div><div className="text-[10px] font-black uppercase tracking-[.18em] text-[#a0a0a8]">Organizer workspace</div><h1 className="mt-2 text-[38px] font-black tracking-[-.07em] md:text-[50px]">Make it happen.</h1><p className="mt-3 text-[13px] text-[#85858d]">Everything you need to bring a room full of people together.</p></div><Link href="/organizer/events/new" className="flex w-fit items-center gap-2 rounded-full bg-[#18181c] px-4 py-3 text-[11px] font-black text-white dark:bg-[#f6c945] dark:text-[#15151a]"><Plus size={14} /> Create event</Link></div><div className="mt-9 grid gap-4 sm:grid-cols-2 xl:grid-cols-4"><Stat label="Gross revenue" value={`₹${(totalRevenue / 100000).toFixed(1)}L`} icon={<CircleDollarSign size={17} />} accent="yellow" /><Stat label="Tickets sold" value="4,738" icon={<Ticket size={17} />} accent="purple" /><Stat label="Conversion rate" value="8.6%" icon={<TrendingUp size={17} />} accent="green" /><Stat label="Events live" value={String(events.length)} icon={<CalendarDays size={17} />} accent="purple" /></div><div className="mt-8 grid gap-5 xl:grid-cols-[1.25fr_.75fr]"><div className="rounded-[20px] border border-black/[.08] bg-white p-5 dark:border-white/[.09] dark:bg-[#1c1c21]"><div className="flex items-center justify-between"><div><div className="text-[10px] font-black uppercase tracking-[.16em] text-[#a0a0a8]">Performance</div><h2 className="mt-2 text-[20px] font-black tracking-[-.04em]">Ticket sales, last 30 days</h2></div><button onClick={() => toast("Showing the last 30 days")} className="flex items-center gap-1 rounded-full bg-black/[.04] px-3 py-2 text-[10px] font-black text-[#77777f] dark:bg-white/[.06]">Last 30 days <ChevronDown size={13} /></button></div><div className="relative mt-8 h-[205px]"><div className="absolute inset-0 flex flex-col justify-between text-[10px] font-bold text-[#b0b0b6]"><span>1,000</span><span>750</span><span>500</span><span>250</span><span>0</span></div><div className="absolute bottom-0 left-10 right-0 top-0 border-l border-b border-black/[.08] dark:border-white/[.08]"><div className="absolute inset-x-0 top-1/4 border-t border-dashed border-black/[.08] dark:border-white/[.08]" /><div className="absolute inset-x-0 top-2/4 border-t border-dashed border-black/[.08] dark:border-white/[.08]" /><svg viewBox="0 0 600 180" preserveAspectRatio="none" className="absolute inset-0 h-full w-full overflow-visible"><path d="M0,160 C45,158 55,126 88,136 S142,91 178,114 S217,76 258,99 S312,71 350,83 S399,25 442,55 S488,16 520,42 S565,12 600,17" fill="none" stroke="#7166e8" strokeWidth="4" strokeLinecap="round" /><path d="M0,160 C45,158 55,126 88,136 S142,91 178,114 S217,76 258,99 S312,71 350,83 S399,25 442,55 S488,16 520,42 S565,12 600,17 L600,180 L0,180 Z" fill="url(#salesGradient)" opacity=".13" /><defs><linearGradient id="salesGradient" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#7166e8" /><stop offset="1" stopColor="#7166e8" stopOpacity="0" /></linearGradient></defs></svg></div><div className="absolute bottom-[-24px] left-10 right-0 flex justify-between text-[10px] font-bold text-[#b0b0b6]"><span>Sep 01</span><span>Sep 08</span><span>Sep 15</span><span>Sep 22</span><span>Sep 30</span></div></div></div><div className="rounded-[20px] bg-[#19191d] p-6 text-white"><div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[.16em] text-[#f6c945]"><Sparkles size={13} /> Audience pulse</div><div className="mt-8 text-[46px] font-black tracking-[-.08em]">82<span className="text-[22px] text-white/35">%</span></div><div className="mt-1 text-[12px] font-bold text-white/55">of attendees rate your events 5/5</div><div className="mt-8 h-2 overflow-hidden rounded-full bg-white/10"><div className="h-full w-[82%] rounded-full bg-[#f6c945]" /></div><div className="mt-8 flex items-center justify-between border-t border-white/10 pt-5 text-[11px] font-bold text-white/55"><span>Repeat attendance</span><span className="font-black text-white">+24%</span></div><div className="mt-3 flex items-center justify-between text-[11px] font-bold text-white/55"><span>Community growth</span><span className="font-black text-[#f6c945]">+18%</span></div></div></div><div className="mt-8 rounded-[20px] border border-black/[.08] bg-white p-5 dark:border-white/[.09] dark:bg-[#1c1c21]"><div className="flex items-center justify-between"><div><div className="text-[10px] font-black uppercase tracking-[.16em] text-[#a0a0a8]">Your events</div><h2 className="mt-2 text-[20px] font-black tracking-[-.04em]">Live inventory</h2></div><button onClick={() => toast.success("Event list refreshed")} className="text-[11px] font-black text-[#7166e8]">Refresh</button></div><div className="mt-4 overflow-x-auto"><table className="w-full min-w-[680px] text-left"><thead className="border-b border-black/[.07] text-[10px] font-black uppercase tracking-[.12em] text-[#a0a0a8] dark:border-white/[.08]"><tr><th className="pb-3">Event</th><th className="pb-3">Date</th><th className="pb-3">Sold</th><th className="pb-3">Revenue</th><th className="pb-3 text-right">Actions</th></tr></thead><tbody className="divide-y divide-black/[.06] dark:divide-white/[.07]">{events.map(event => <tr key={event.id}><td className="py-4"><div className="flex items-center gap-3"><img src={event.image} alt="" className="h-9 w-12 rounded-lg object-cover" /><div><div className="text-[12px] font-black">{event.title}</div><div className="mt-0.5 text-[10px] font-semibold text-[#9b9ba3]">{event.category}</div></div></div></td><td className="py-4 text-[11px] font-bold text-[#77777f]">{formatShortDate(event.date)}</td><td className="py-4 text-[12px] font-black">{event.attendees}</td><td className="py-4 text-[12px] font-black">₹{event.price === 0 ? "0" : `${Math.round(event.price * Number(event.attendees.replace("k", "000")) / 1000)}k`}</td><td className="py-4"><div className="flex justify-end gap-1"><Link href={`/organizer/events/new?edit=${event.id}`} className="grid h-8 w-8 place-items-center rounded-full bg-black/[.04] text-[#77777f] dark:bg-white/[.06]"><Pencil size={13} /></Link><button onClick={() => deleteEvent(event.id)} className="grid h-8 w-8 place-items-center rounded-full bg-black/[.04] text-[#77777f] hover:text-red-500 dark:bg-white/[.06]"><Trash2 size={13} /></button></div></td></tr>)}</tbody></table></div></div></DashboardShell>;
+}
+
+function CreateEventPage({ events, saveEvents }: { events: EventItem[]; saveEvents: (events: EventItem[]) => void }) {
+  const [, navigate] = useLocation();
+  const editingId = new URLSearchParams(window.location.search).get("edit");
+  const editing = events.find(event => event.id === editingId);
+  const [title, setTitle] = useState(editing?.title ?? "");
+  const [category, setCategory] = useState(editing?.category ?? "Music");
+  const [date, setDate] = useState(editing?.date ?? "2026-12-12");
+  const [time, setTime] = useState(editing?.time ?? "7:00 PM – 11:00 PM");
+  const [venue, setVenue] = useState(editing?.venue ?? "");
+  const [location, setLocation] = useState(editing?.location ?? "Mumbai, Maharashtra");
+  const [description, setDescription] = useState(editing?.description ?? "");
+  const [price, setPrice] = useState(String(editing?.price ?? 999));
+  const submit = (e: React.FormEvent) => { e.preventDefault(); if (!title || !venue || !description) { toast.error("Add a title, venue, and description to continue."); return; } const next: EventItem = { id: editing?.id ?? `${title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${Date.now()}`, title, category, date, time, location, venue, image: editing?.image ?? IMAGES.community, price: Number(price) || 0, attendees: editing?.attendees ?? "0", remaining: editing?.remaining ?? 250, organizer: "Afterglow Collective", organizerRole: "Independent event studio", description, gradient: editing?.gradient ?? "from-violet-400/80 via-indigo-500/40 to-transparent", featured: false, tickets: editing?.tickets ?? [{ name: "General Admission", price: Number(price) || 0, description: "Entry to the event", available: 250 }] }; saveEvents(editing ? events.map(item => item.id === editing.id ? next : item) : [next, ...events]); toast.success(editing ? "Event updated" : "Event saved as live"); navigate("/organizer"); };
+  return <><AppHeader /><main className="container max-w-[1050px] py-10 md:py-14"><div className="mb-8 flex items-center gap-3 text-[11px] font-black uppercase tracking-[.15em] text-[#a0a0a8]"><Link href="/organizer" className="transition hover:text-[#15151a] dark:hover:text-white">Organizer</Link><ChevronRight size={13} /><span className="text-[#7166e8]">{editing ? "Edit event" : "Create event"}</span></div><div className="grid gap-8 lg:grid-cols-[1fr_330px]"><div><div className="text-[10px] font-black uppercase tracking-[.18em] text-[#a0a0a8]">{editing ? "Polish the details" : "Bring your idea to life"}</div><h1 className="mt-3 text-[48px] font-black leading-[.95] tracking-[-.08em] md:text-[64px]">{editing ? "Make it even better." : "What are you\ncreating?"}</h1><p className="mt-5 max-w-[490px] whitespace-pre-line text-[14px] leading-6 text-[#85858d]">Tell people what makes your event worth showing up for.</p><form onSubmit={submit} className="mt-10 space-y-7"><div><StepTitle number="01" title="The essentials" /><div className="mt-4 grid gap-4 sm:grid-cols-2"><Field label="Event name" placeholder="e.g. Sunset Sessions" value={title} onChange={setTitle} /><label className="block"><span className="text-[11px] font-black text-[#73737b]">Category</span><select value={category} onChange={e => setCategory(e.target.value)} className="mt-2 h-11 w-full rounded-[10px] border border-black/10 bg-white px-3 text-[13px] font-semibold outline-none dark:border-white/10 dark:bg-[#1c1c21]">{CATEGORIES.map(c => <option key={c.name}>{c.name}</option>)}</select></label></div></div><div><StepTitle number="02" title="When & where" /><div className="mt-4 grid gap-4 sm:grid-cols-2"><Field label="Date" type="date" placeholder="2026-12-12" value={date} onChange={setDate} /><Field label="Time" placeholder="7:00 PM – 11:00 PM" value={time} onChange={setTime} /><Field label="Venue name" placeholder="A beautiful place" value={venue} onChange={setVenue} /><Field label="City & state" placeholder="Mumbai, Maharashtra" value={location} onChange={setLocation} /></div></div><div><StepTitle number="03" title="Tell the story" /><label className="mt-4 block"><span className="text-[11px] font-black text-[#73737b]">Description</span><textarea value={description} onChange={e => setDescription(e.target.value)} rows={5} placeholder="What will people experience?" className="mt-2 w-full resize-none rounded-[12px] border border-black/10 bg-white p-3 text-[13px] font-semibold outline-none focus:border-[#7166e8] dark:border-white/10 dark:bg-[#1c1c21]" /></label></div><div><StepTitle number="04" title="Ticketing" /><div className="mt-4 grid gap-4 sm:grid-cols-2"><Field label="Starting price (₹)" placeholder="999" value={price} onChange={setPrice} /><div className="rounded-[12px] border border-dashed border-black/15 bg-[#f8f8f5] p-4 dark:border-white/15 dark:bg-[#1c1c21]"><div className="flex items-center gap-2 text-[12px] font-black"><Ticket size={15} className="text-[#7166e8]" /> General Admission</div><div className="mt-1 text-[11px] text-[#9999a1]">250 seats available · Add more tiers later</div></div></div></div><div className="flex flex-col gap-3 border-t border-black/[.08] pt-6 sm:flex-row dark:border-white/[.1]"><button type="submit" className="flex items-center justify-center gap-2 rounded-[12px] bg-[#18181c] px-5 py-3.5 text-[12px] font-black text-white dark:bg-[#f6c945] dark:text-[#15151a]">{editing ? "Update event" : "Publish event"} <ArrowRight size={14} /></button><Link href="/organizer" className="flex items-center justify-center rounded-[12px] px-5 py-3.5 text-[12px] font-black text-[#77777f]">Save draft</Link></div></form></div><aside><div className="sticky top-5 overflow-hidden rounded-[22px] border border-black/[.08] bg-white dark:border-white/[.1] dark:bg-[#1c1c21]"><div className="relative aspect-[1.25] bg-[#eee] dark:bg-[#29292f]"><img src={editing?.image ?? IMAGES.community} alt="Preview" className="h-full w-full object-cover opacity-80" /><div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" /><div className="absolute bottom-4 left-4 right-4 text-white"><div className="text-[10px] font-black uppercase tracking-[.14em] text-white/65">Live preview</div><div className="mt-1 text-[20px] font-black leading-tight">{title || "Your event name"}</div></div></div><div className="space-y-3 p-5 text-[11px] font-semibold text-[#85858d]"><div className="flex gap-2"><CalendarDays size={14} className="shrink-0 text-[#7166e8]" />{date ? formatDate(date) : "Your event date"} · {time}</div><div className="flex gap-2"><MapPin size={14} className="shrink-0 text-[#7166e8]" />{venue || "Your venue"}, {location}</div><div className="flex gap-2"><CircleDollarSign size={14} className="shrink-0 text-[#7166e8]" />From {money(Number(price) || 0)}</div></div></div><div className="mt-4 rounded-[18px] bg-[#f2f0ff] p-5 text-[#433b9f] dark:bg-[#282545] dark:text-[#c3beff]"><div className="flex items-center gap-2 text-[11px] font-black"><Upload size={14} /> Add event imagery</div><p className="mt-2 text-[11px] leading-5 opacity-70">Upload a crisp, landscape image to help the right people find you.</p><button onClick={() => toast("Image uploads are connected to managed storage in production.")} className="mt-3 text-[11px] font-black underline">Choose an image</button></div></aside></div></main></>;
+}
+
+function AuthPage({ mode }: { mode: "login" | "signup" }) { const [, navigate] = useLocation(); const [email, setEmail] = useState(""); const [password, setPassword] = useState(""); const submit = (e: React.FormEvent) => { e.preventDefault(); if (!email.includes("@") || password.length < 6) { toast.error("Use a valid email and a 6+ character password."); return; } toast.success(mode === "login" ? "Welcome back to Evently" : "Account created — welcome in"); navigate("/dashboard"); }; return <div className="grid min-h-screen lg:grid-cols-[.9fr_1.1fr]"><div className="relative hidden overflow-hidden bg-[#7166e8] p-10 text-white lg:block"><Logo light /><div className="absolute bottom-14 left-10 right-10"><div className="mb-5 flex items-center gap-2 text-[10px] font-black uppercase tracking-[.18em] text-white/65"><Sparkles size={14} className="text-[#f6c945]" /> A better way to make plans</div><h1 className="max-w-[520px] text-[65px] font-black leading-[.92] tracking-[-.08em]">The best<br />stories are<br /><span className="text-[#f6c945]">unplanned.</span></h1><p className="mt-6 max-w-[390px] text-[14px] leading-6 text-white/65">Find the people, places, and small sparks that make a regular week feel like yours.</p></div><div className="absolute -right-20 -top-20 h-72 w-72 rounded-full border-[45px] border-white/10" /><div className="absolute bottom-[32%] right-[13%] h-28 w-28 rotate-12 rounded-[28px] bg-[#f6c945] shadow-[0_20px_50px_rgba(0,0,0,.2)]" /></div><div className="flex flex-col bg-[#fafaf8] dark:bg-[#141417]"><div className="flex items-center justify-between p-6 lg:justify-end"><Link href="/" className="lg:hidden"><Logo /></Link><Link href="/" className="text-[12px] font-bold text-[#85858d]">Back to home <ArrowRight size={13} className="ml-1 inline" /></Link></div><div className="m-auto w-full max-w-[390px] px-6 py-10"><div className="text-[10px] font-black uppercase tracking-[.18em] text-[#a0a0a8]">{mode === "login" ? "Welcome back" : "Come on in"}</div><h1 className="mt-3 text-[42px] font-black leading-none tracking-[-.07em]">{mode === "login" ? "Good to see you." : "Let’s make plans."}</h1><p className="mt-4 text-[13px] leading-6 text-[#85858d]">{mode === "login" ? "Your next memorable day is waiting." : "Create an account and start finding your people."}</p><form onSubmit={submit} className="mt-9 space-y-4"><Field label="Email address" placeholder="you@email.com" value={email} onChange={setEmail} type="email" /><Field label="Password" placeholder="••••••••" value={password} onChange={setPassword} type="password" /><button type="submit" className="mt-3 flex h-12 w-full items-center justify-center gap-2 rounded-[12px] bg-[#18181c] text-[12px] font-black text-white dark:bg-[#f6c945] dark:text-[#15151a]">{mode === "login" ? "Log in" : "Create account"} <ArrowRight size={15} /></button></form><div className="my-7 flex items-center gap-3 text-[10px] font-black uppercase tracking-[.14em] text-[#b0b0b6]"><span className="h-px flex-1 bg-black/10 dark:bg-white/10" />or<span className="h-px flex-1 bg-black/10 dark:bg-white/10" /></div><button onClick={() => toast.success("Google sign-in is ready for OAuth setup.")} className="flex h-11 w-full items-center justify-center gap-2 rounded-[12px] border border-black/10 text-[12px] font-black dark:border-white/10"><span className="text-[#4285f4]">G</span> Continue with Google</button><p className="mt-7 text-center text-[12px] font-semibold text-[#85858d]">{mode === "login" ? "New to Evently?" : "Already have an account?"} <Link href={mode === "login" ? "/signup" : "/login"} className="font-black text-[#7166e8]">{mode === "login" ? "Sign up" : "Log in"}</Link></p><div className="mt-10 flex items-center justify-center gap-2 text-[10px] font-bold text-[#a0a0a8]"><ShieldCheck size={13} className="text-[#58a86a]" /> Your data stays yours.</div></div></div></div>; }
+
+function AboutPage({ contact = false }: { contact?: boolean }) { return <><AppHeader /><main className="container max-w-[1060px] py-16 md:py-24"><div className="grid gap-12 lg:grid-cols-[.8fr_1.2fr]"><div><div className="text-[10px] font-black uppercase tracking-[.18em] text-[#a0a0a8]">{contact ? "Let’s talk" : "The Evently story"}</div><h1 className="mt-4 text-[58px] font-black leading-[.92] tracking-[-.08em] md:text-[82px]">{contact ? <>Have a<br /><span className="text-[#7166e8]">question?</span></> : <>More life,<br /><span className="text-[#7166e8]">less scrolling.</span></>}</h1><p className="mt-6 max-w-[360px] text-[14px] leading-7 text-[#85858d]">{contact ? "Tell us what you’re building, planning, or wondering about. A real person will get back to you." : "Evently is a platform for people who want their calendars to feel like a reflection of their curiosity."}</p></div><div className="grid gap-5"><div className="rounded-[24px] bg-[#f6c945] p-7 text-[#3a3212] md:p-10"><div className="flex items-center justify-between"><Sparkles size={25} /><span className="text-[10px] font-black uppercase tracking-[.16em]">{contact ? "Email us" : "Our north star"}</span></div><h2 className="mt-16 max-w-[650px] text-[35px] font-black leading-[1] tracking-[-.06em] md:text-[48px]">{contact ? "hello@evently.app" : "A little more life in every week."}</h2><p className="mt-5 max-w-[500px] text-[13px] leading-6 opacity-70">{contact ? "For partnerships, support, or just to say hi. We’re here Monday to Friday, 10am–6pm IST." : "Because the memorable parts of life rarely happen in the feed. They happen in rooms, on stages, around tables, and somewhere on the way home."}</p></div>{contact ? <div className="grid gap-4 sm:grid-cols-2"><div className="rounded-[20px] border border-black/10 bg-white p-6 dark:border-white/10 dark:bg-[#1c1c21]"><Mail className="text-[#7166e8]" size={20} /><div className="mt-5 text-[13px] font-black">hello@evently.app</div><div className="mt-1 text-[11px] text-[#85858d]">General questions</div></div><div className="rounded-[20px] border border-black/10 bg-white p-6 dark:border-white/10 dark:bg-[#1c1c21]"><Phone className="text-[#7166e8]" size={20} /><div className="mt-5 text-[13px] font-black">+91 80 4567 8900</div><div className="mt-1 text-[11px] text-[#85858d]">Organizer support</div></div></div> : <div className="grid gap-5 sm:grid-cols-2"><div className="rounded-[20px] bg-[#19191d] p-6 text-white"><div className="text-[42px] font-black tracking-[-.08em]">12k<span className="text-[#f6c945]">+</span></div><div className="mt-2 text-[11px] font-bold text-white/50">events hosted on Evently</div></div><div className="rounded-[20px] bg-[#7166e8] p-6 text-white"><div className="text-[42px] font-black tracking-[-.08em]">4.9<span className="text-[#f6c945]">/5</span></div><div className="mt-2 text-[11px] font-bold text-white/50">average attendee rating</div></div></div>}</div></div><div className="mt-24 grid gap-8 border-t border-black/[.08] pt-10 md:grid-cols-3 dark:border-white/[.08]"><Value icon={<Heart size={18} />} title="Be human" body="Design for the feeling people take home, not just the ticket they buy." /><Value icon={<Zap size={18} />} title="Make it easy" body="The right event should be a few taps away, not buried in a maze." /><Value icon={<Users size={18} />} title="Build belonging" body="Great events do more than fill seats. They give people a reason to return." /></div></main><Footer /></>; }
+function Value({ icon, title, body }: { icon: ReactNode; title: string; body: string }) { return <div><div className="grid h-10 w-10 place-items-center rounded-xl bg-[#f2f0ff] text-[#7166e8] dark:bg-[#282545]">{icon}</div><h3 className="mt-5 text-[16px] font-black">{title}</h3><p className="mt-2 text-[13px] leading-6 text-[#85858d]">{body}</p></div>; }
+
+export default function Evently() {
+  const [location] = useLocation();
+  const { events, bookings, saveBookings, saveEvents } = useEventStore();
+  const path = location.split("?")[0];
+  if (path === "/") return <HomePage events={events} />;
+  if (path === "/explore") return <ExplorePage events={events} />;
+  if (path.startsWith("/events/")) { const event = events.find(item => item.id === path.split("/")[2]) ?? events[0]; return <EventDetailsPage event={event} events={events} />; }
+  if (path.startsWith("/checkout/")) { const event = events.find(item => item.id === path.split("/")[2]) ?? events[0]; return <CheckoutPage event={event} events={events} bookings={bookings} saveBookings={saveBookings} saveEvents={saveEvents} />; }
+  if (path === "/confirmation") { const id = new URLSearchParams(location.split("?")[1] ?? "").get("id"); const booking = bookings.find(item => item.id === id); const event = events.find(item => item.id === booking?.eventId) ?? events[0]; return <ConfirmationPage event={event} booking={booking} />; }
+  if (path === "/dashboard") return <UserDashboard bookings={bookings} />;
+  if (path === "/organizer") return <OrganizerDashboard events={events} saveEvents={saveEvents} />;
+  if (path === "/organizer/events/new") return <CreateEventPage events={events} saveEvents={saveEvents} />;
+  if (path === "/login") return <AuthPage mode="login" />;
+  if (path === "/signup") return <AuthPage mode="signup" />;
+  if (path === "/about") return <AboutPage />;
+  if (path === "/contact") return <AboutPage contact />;
+  return <NotFound />;
+}

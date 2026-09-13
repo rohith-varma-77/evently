@@ -1,0 +1,11 @@
+/* Evently visual system — kept separate from the generated token sheet for easy tuning. */
+:root { --evently-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif; --evently-body: "DM Sans", ui-sans-serif, system-ui, sans-serif; }
+html { scroll-behavior: smooth; }
+body { font-family: var(--evently-body); letter-spacing: -0.01em; }
+h1, h2, h3, h4, button, nav, header { font-family: var(--evently-body); }
+button, a, input, select, textarea { transition: color 180ms cubic-bezier(.23,1,.32,1), background-color 180ms cubic-bezier(.23,1,.32,1), border-color 180ms cubic-bezier(.23,1,.32,1), box-shadow 180ms cubic-bezier(.23,1,.32,1), transform 180ms cubic-bezier(.23,1,.32,1), opacity 180ms cubic-bezier(.23,1,.32,1); }
+button:active, a:active { transform: scale(.98); }
+::selection { background: #f6c945; color: #18181c; }
+.print-only { display: none; }
+@media print { body > * { display: none !important; } .print-only { display: block; padding: 40px; font-family: sans-serif; color: #111; } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; } }
