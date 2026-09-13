@@ -1,6 +1,7 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users } from "../drizzle/schema";
+import { randomBytes } from "node:crypto";
+import { bookings, eventStaff, events, InsertUser, ticketPasses, users } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -89,4 +90,48 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-// TODO: add feature queries here as your schema grows.
+export function createSecurePassId() {
+  return `EVT_PASS_${randomBytes(24).toString("base64url")}`;
+}
+
+export async function issueTicketPasses(input: { bookingId: number; eventId: number; ticketTypeId: number; quantity: number }) {
+  const records = Array.from({ length: input.quantity }, () => ({ ...input, passId: createSecurePassId() }));
+  const db = await getDb();
+  if (db && records.length > 0) await db.insert(ticketPasses).values(records);
+  return records;
+}
+
+export async function getTicketPassById(passId: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(ticketPasses).where(eq(ticketPasses.passId, passId)).limit(1);
+  return result[0];
+}
+
+export async function getTicketPassesForUser(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select({ pass: ticketPasses, booking: bookings }).from(ticketPasses).innerJoin(bookings, eq(ticketPasses.bookingId, bookings.id)).where(eq(bookings.attendeeId, userId));
+}
+
+export async function canAccessEventForCheckIn(eventId: number, userId: number, role: string) {
+  if (role === "admin") return true;
+  const db = await getDb();
+  if (!db) return false;
+  if (role === "organizer") {
+    const owned = await db.select({ id: events.id }).from(events).where(and(eq(events.id, eventId), eq(events.organizerId, userId))).limit(1);
+    return owned.length > 0;
+  }
+  if (role === "staff") {
+    const assigned = await db.select({ id: eventStaff.id }).from(eventStaff).where(and(eq(eventStaff.eventId, eventId), eq(eventStaff.userId, userId))).limit(1);
+    return assigned.length > 0;
+  }
+  return false;
+}
+
+export async function markTicketPassCheckedIn(passId: string, userId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  await db.update(ticketPasses).set({ status: "CHECKED_IN", checkedInAt: new Date(), checkedInBy: userId }).where(and(eq(ticketPasses.passId, passId), eq(ticketPasses.status, "ACTIVE")));
+  return getTicketPassById(passId);
+}

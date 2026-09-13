@@ -8,7 +8,7 @@ Evently is a Vite + React + TypeScript + Tailwind frontend on the WebDev full-st
 2. Choose a ticket and quantity, then continue to checkout.
 3. Use any attendee name, a valid email, and the Stripe test card `4242 4242 4242 4242`.
 4. Use any future expiry and CVC in a real Stripe environment; in the built-in demo flow the placeholder fields are intentionally represented visually.
-5. The confirmation page includes a deterministic QR-style ticket and a print-ready invoice. Choose **Save as PDF** in the browser print dialog to download the invoice.
+5. The confirmation page and `/dashboard/passes` wallet include one unique QR pass per purchased ticket, with an opaque pass ID and a **Download QR pass** action. The invoice remains print-ready; choose **Save as PDF** in the browser print dialog to download it.
 
 ## Stripe TEST MODE
 
@@ -22,7 +22,13 @@ Set `STRIPE_SECRET_KEY`, `VITE_STRIPE_PUBLISHABLE_KEY`, and `STRIPE_WEBHOOK_SECR
 
 ## Database
 
-`drizzle/schema.ts` contains `users`, `events`, `ticketTypes`, and `bookings`. The generated migration is in `drizzle/0001_red_beyonder.sql` and has been applied to the managed database. Stripe identifiers are stored only where needed for API references and fulfillment.
+`drizzle/schema.ts` contains `users`, `events`, `ticketTypes`, `bookings`, `eventStaff`, and `ticketPasses`. The generated migrations are in `drizzle/0001_red_beyonder.sql` and `drizzle/0002_flippant_fenris.sql`; both have been applied to the managed database. Ticket passes store only opaque IDs, status, check-in timestamp, and checker ID—never attendee-sensitive data inside the QR payload.
+
+## QR check-in and roles
+
+Evently supports `user`, `organizer`, `staff`, and `admin` roles. Organizer and admin accounts can issue passes; organizers can scan their own events; staff can scan only events assigned through `eventStaff`; and admins can manage roles and staff assignments. The server enforces these rules through tRPC middleware and event-scope checks. The scanner is available at `/scanner`, and `/403` is the clean unauthorized state.
+
+For a demo walkthrough, the scanner provides **Use valid demo** (`EVT-DEMO24-PASS-1`) and **Use used demo** (`EVT-DEMO24-PASS-USED`) controls. Real pass IDs are verified through `ticketPasses.verify` and are atomically marked `CHECKED_IN` through `ticketPasses.checkIn`, preventing duplicate check-ins.
 
 ## Deployment
 

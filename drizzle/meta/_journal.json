@@ -15,6 +15,13 @@
       "when": 1789315992779,
       "tag": "0001_red_beyonder",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1789316519409,
+      "tag": "0002_flippant_fenris",
+      "breakpoints": true
     }
   ]
 }

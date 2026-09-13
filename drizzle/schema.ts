@@ -16,7 +16,7 @@ export const users = mysqlTable("users", {
   name: text("name"),
   email: varchar("email", { length: 320 }),
   loginMethod: varchar("loginMethod", { length: 64 }),
-  role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
+  role: mysqlEnum("role", ["user", "organizer", "staff", "admin"]).default("user").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
@@ -68,9 +68,33 @@ export const bookings = mysqlTable("bookings", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
+export const eventStaff = mysqlTable("eventStaff", {
+  id: int("id").autoincrement().primaryKey(),
+  eventId: int("eventId").notNull(),
+  userId: int("userId").notNull(),
+  assignedBy: int("assignedBy").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export const ticketPasses = mysqlTable("ticketPasses", {
+  id: int("id").autoincrement().primaryKey(),
+  bookingId: int("bookingId").notNull(),
+  eventId: int("eventId").notNull(),
+  ticketTypeId: int("ticketTypeId").notNull(),
+  passId: varchar("passId", { length: 80 }).notNull().unique(),
+  status: mysqlEnum("status", ["ACTIVE", "CHECKED_IN", "CANCELLED"]).default("ACTIVE").notNull(),
+  checkedInAt: timestamp("checkedInAt"),
+  checkedInBy: int("checkedInBy"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
 export type Event = typeof events.$inferSelect;
 export type InsertEvent = typeof events.$inferInsert;
 export type TicketType = typeof ticketTypes.$inferSelect;
 export type InsertTicketType = typeof ticketTypes.$inferInsert;
 export type Booking = typeof bookings.$inferSelect;
 export type InsertBooking = typeof bookings.$inferInsert;
+export type EventStaff = typeof eventStaff.$inferSelect;
+export type InsertEventStaff = typeof eventStaff.$inferInsert;
+export type TicketPass = typeof ticketPasses.$inferSelect;
+export type InsertTicketPass = typeof ticketPasses.$inferInsert;

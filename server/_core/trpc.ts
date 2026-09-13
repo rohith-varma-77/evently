@@ -43,3 +43,15 @@ export const adminProcedure = t.procedure.use(
     });
   }),
 );
+
+const roleProcedure = (...roles: Array<"user" | "organizer" | "staff" | "admin">) => protectedProcedure.use(
+  t.middleware(async opts => {
+    if (!opts.ctx.user || !roles.includes(opts.ctx.user.role)) {
+      throw new TRPCError({ code: "FORBIDDEN", message: "You do not have permission to access this resource." });
+    }
+    return opts.next({ ctx: opts.ctx });
+  }),
+);
+
+export const organizerProcedure = roleProcedure("organizer", "admin");
+export const staffProcedure = roleProcedure("staff", "organizer", "admin");
