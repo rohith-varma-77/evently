@@ -6,12 +6,18 @@ import path from "path";
 import { createServer as createViteServer } from "vite";
 import viteConfig from "../../vite.config";
 
-export async function setupVite(app: Express, server: Server) {
-  const serverOptions = {
+export function getViteServerOptions(server: Server, clientPort: number) {
+  return {
     middlewareMode: true,
-    hmr: { server },
+    // The managed preview proxies the app over HTTPS. Pin the HMR client to
+    // the same public application port so it does not fall back to 5173.
+    hmr: { server, clientPort },
     allowedHosts: true as const,
   };
+}
+
+export async function setupVite(app: Express, server: Server, clientPort: number) {
+  const serverOptions = getViteServerOptions(server, clientPort);
 
   const vite = await createViteServer({
     ...viteConfig,
