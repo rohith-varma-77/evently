@@ -8,3 +8,20 @@ export const ENV = {
   forgeApiUrl: process.env.BUILT_IN_FORGE_API_URL ?? "",
   forgeApiKey: process.env.BUILT_IN_FORGE_API_KEY ?? "",
 };
+
+export function validateProductionEnv(config = ENV) {
+  if (!config.isProduction) return;
+  const required: Array<[string, string]> = [
+    ["JWT_SECRET", config.cookieSecret],
+    ["DATABASE_URL", config.databaseUrl],
+    ["VITE_APP_ID", config.appId],
+    ["OAUTH_SERVER_URL", config.oAuthServerUrl],
+  ];
+  const missing = required.filter(([, value]) => !value.trim()).map(([name]) => name);
+  if (missing.length) {
+    throw new Error(`Missing required production environment variables: ${missing.join(", ")}`);
+  }
+  if (config.cookieSecret.length < 32) {
+    throw new Error("JWT_SECRET must be at least 32 characters in production");
+  }
+}

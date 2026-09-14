@@ -97,7 +97,8 @@ export function createSecurePassId() {
 export async function issueTicketPasses(input: { bookingId: number; eventId: number; ticketTypeId: number; quantity: number }) {
   const records = Array.from({ length: input.quantity }, () => ({ ...input, passId: createSecurePassId() }));
   const db = await getDb();
-  if (db && records.length > 0) await db.insert(ticketPasses).values(records);
+  if (!db) throw new Error("Database unavailable; ticket passes were not issued");
+  if (records.length > 0) await db.insert(ticketPasses).values(records);
   return records;
 }
 
@@ -131,7 +132,7 @@ export async function canAccessEventForCheckIn(eventId: number, userId: number, 
 
 export async function markTicketPassCheckedIn(passId: string, userId: number) {
   const db = await getDb();
-  if (!db) return undefined;
+  if (!db) throw new Error("Database unavailable; check-in was not recorded");
   await db.update(ticketPasses).set({ status: "CHECKED_IN", checkedInAt: new Date(), checkedInBy: userId }).where(and(eq(ticketPasses.passId, passId), eq(ticketPasses.status, "ACTIVE")));
   return getTicketPassById(passId);
 }

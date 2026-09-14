@@ -12,7 +12,8 @@ export function registerStripeWebhook(app: Express) {
   app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), (req, res) => {
     const stripe = getStripe();
     if (!stripe || !webhookSecret) {
-      return res.json({ received: true, demo: true });
+      console.error("[Stripe webhook] Stripe secrets are not configured");
+      return res.status(503).json({ error: "Stripe webhook is not configured" });
     }
 
     try {
@@ -36,32 +37,7 @@ export function registerStripeWebhook(app: Express) {
 
 export function registerStripeCheckout(app: Express) {
   app.post("/api/stripe/create-checkout-session", async (req, res) => {
-    const stripe = getStripe();
-    if (!stripe) {
-      return res.status(503).json({ error: "Stripe is not configured. Use the built-in demo payment flow or add test keys." });
-    }
-
-    const { amount, eventTitle, userId, email, name, bookingId } = req.body ?? {};
-    if (!amount || !eventTitle || !email) {
-      return res.status(400).json({ error: "amount, eventTitle, and email are required" });
-    }
-
-    try {
-      const origin = req.headers.origin ?? "http://localhost:3000";
-      const session = await stripe.checkout.sessions.create({
-        mode: "payment",
-        line_items: [{ price_data: { currency: "inr", product_data: { name: eventTitle }, unit_amount: Math.round(Number(amount) * 100) }, quantity: 1 }],
-        customer_email: email,
-        client_reference_id: String(userId ?? bookingId ?? "guest"),
-        metadata: { user_id: String(userId ?? "guest"), customer_email: email, customer_name: String(name ?? ""), booking_id: String(bookingId ?? "") },
-        allow_promotion_codes: true,
-        success_url: `${origin}/confirmation?id=${bookingId ?? "stripe"}`,
-        cancel_url: `${origin}/explore`,
-      });
-      return res.json({ url: session.url });
-    } catch (error) {
-      console.error("[Stripe checkout] Session creation failed", error);
-      return res.status(500).json({ error: "Unable to create Stripe checkout session" });
-    }
+    console.warn("[Stripe checkout] Disabled: Evently currently uses organizer-managed manual payments");
+    return res.status(410).json({ error: "Stripe checkout is disabled; use the event organizer's UPI and WhatsApp instructions" });
   });
 }

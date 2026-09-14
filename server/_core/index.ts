@@ -9,6 +9,7 @@ import { registerStripeCheckout, registerStripeWebhook } from "../stripe";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
+import { validateProductionEnv } from "./env";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -30,6 +31,7 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 }
 
 async function startServer() {
+  validateProductionEnv();
   const app = express();
   const server = createServer(app);
   // Stripe webhook signatures require the raw request body before JSON parsing.
