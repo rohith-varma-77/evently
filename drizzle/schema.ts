@@ -38,6 +38,9 @@ export const events = mysqlTable("events", {
   startsAt: timestamp("startsAt").notNull(),
   endsAt: timestamp("endsAt").notNull(),
   status: mysqlEnum("status", ["draft", "published", "archived"]).default("draft").notNull(),
+  paymentUpi: varchar("paymentUpi", { length: 180 }),
+  paymentWhatsapp: varchar("paymentWhatsapp", { length: 32 }),
+  ticketTheme: varchar("ticketTheme", { length: 32 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -63,6 +66,7 @@ export const bookings = mysqlTable("bookings", {
   attendeeEmail: varchar("attendeeEmail", { length: 320 }).notNull(),
   quantity: int("quantity").notNull(),
   status: mysqlEnum("status", ["pending", "confirmed", "cancelled"]).default("pending").notNull(),
+  paymentReference: varchar("paymentReference", { length: 160 }),
   stripePaymentIntentId: varchar("stripePaymentIntentId", { length: 120 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),

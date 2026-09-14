@@ -6,23 +6,24 @@ Evently is a Vite + React + TypeScript + Tailwind frontend on the WebDev full-st
 
 1. Open `/explore` and select an event.
 2. Choose a ticket and quantity, then continue to checkout.
-3. Use any attendee name, a valid email, and the Stripe test card `4242 4242 4242 4242`.
-4. Use any future expiry and CVC in a real Stripe environment; in the built-in demo flow the placeholder fields are intentionally represented visually.
-5. The confirmation page and `/dashboard/passes` wallet include one unique QR pass per purchased ticket, with an opaque pass ID and a **Download QR pass** action. The invoice remains print-ready; choose **Save as PDF** in the browser print dialog to download it.
+3. Enter any attendee name and valid email. The checkout displays the event organizer’s UPI ID and WhatsApp number, plus an optional payment reference field.
+4. Pay the organizer manually, then submit the registration. The booking appears as `PENDING` in the organizer workspace.
+5. The organizer uses **Mark paid & issue QR** after confirming the payment. Evently generates one unique pass ID and visually distinct QR frame per participant ticket.
+6. The confirmation page and `/dashboard/passes` wallet include each unique QR pass with a **Download QR pass** action. The invoice remains print-ready; choose **Save as PDF** in the browser print dialog to download it.
 
-## Stripe TEST MODE
+## Manual UPI/WhatsApp payments
 
-The server scaffold in `server/stripe.ts` provides:
+Each event has organizer-managed payment fields:
 
-- `POST /api/stripe/create-checkout-session` for hosted Checkout sessions.
-- `POST /api/stripe/webhook` with signature verification and the required `evt_test_` verification response.
-- Metadata for user, attendee email/name, and booking identifiers.
+- `paymentUpi` — the UPI ID shown at checkout.
+- `paymentWhatsapp` — the WhatsApp number attendees use to share payment proof.
+- `ticketTheme` — a stored theme hint for event-specific ticket branding.
 
-Set `STRIPE_SECRET_KEY`, `VITE_STRIPE_PUBLISHABLE_KEY`, and `STRIPE_WEBHOOK_SECRET` from Stripe test mode in the project or Vercel environment. Never commit real secrets. Use the test card above and claim the Stripe sandbox before a public pilot.
+Organizers enter these values while creating or editing an event. Attendees submit a manual registration; organizers confirm payment in the organizer dashboard, which generates the participant QR passes. Stripe scaffolding remains available in `server/stripe.ts` for a future automated payment option, but it is no longer used by the primary checkout UI.
 
 ## Database
 
-`drizzle/schema.ts` contains `users`, `events`, `ticketTypes`, `bookings`, `eventStaff`, and `ticketPasses`. The generated migrations are in `drizzle/0001_red_beyonder.sql` and `drizzle/0002_flippant_fenris.sql`; both have been applied to the managed database. Ticket passes store only opaque IDs, status, check-in timestamp, and checker ID—never attendee-sensitive data inside the QR payload.
+`drizzle/schema.ts` contains `users`, `events`, `ticketTypes`, `bookings`, `eventStaff`, and `ticketPasses`. The generated migrations are in `drizzle/0001_red_beyonder.sql`, `drizzle/0002_flippant_fenris.sql`, and `drizzle/0003_dry_morph.sql`; all have been applied to the managed database. Ticket passes store only opaque IDs, status, check-in timestamp, and checker ID—never attendee-sensitive data inside the QR payload.
 
 ## QR check-in and roles
 
