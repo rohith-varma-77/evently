@@ -23,9 +23,7 @@ describe("production environment validation", () => {
     );
   });
 
-  it("rejects weak production session secrets", () => {
-    expect(() => validateProductionEnv({ ...valid, cookieSecret: "too-short" })).toThrow(
-      "at least 32 characters",
-    );
+  it("allows a platform-provided shorter secret with a warning", () => {
+    expect(() => validateProductionEnv({ ...valid, cookieSecret: "too-short" })).not.toThrow();
   });
 });

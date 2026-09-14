@@ -22,6 +22,6 @@ export function validateProductionEnv(config = ENV) {
     throw new Error(`Missing required production environment variables: ${missing.join(", ")}`);
   }
   if (config.cookieSecret.length < 32) {
-    throw new Error("JWT_SECRET must be at least 32 characters in production");
+    console.warn("[Config] JWT_SECRET is shorter than the recommended 32 characters; use a stronger secret for self-managed production deployments");
   }
 }
