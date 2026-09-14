@@ -6,12 +6,12 @@ import path from "path";
 import { createServer as createViteServer } from "vite";
 import viteConfig from "../../vite.config";
 
-export function getViteServerOptions(server: Server, clientPort: number) {
+export function getViteServerOptions(server: Server, clientPort: number, managedPreview = Boolean(process.env.MANUS_WEBDEV_PROJECT_ID)) {
   return {
     middlewareMode: true,
-    // The managed preview proxies the app over HTTPS. Pin the HMR client to
-    // the same public application port so it does not fall back to 5173.
-    hmr: { server, clientPort },
+    // The managed preview proxies the app over HTTPS and exposes WebSockets
+    // on the standard secure port. Local development keeps the app port.
+    hmr: { server, clientPort: managedPreview ? 443 : clientPort, ...(managedPreview ? { protocol: "wss" as const } : {}) },
     allowedHosts: true as const,
   };
 }
