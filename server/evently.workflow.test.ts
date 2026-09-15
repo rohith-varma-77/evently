@@ -1,0 +1,31 @@
+import { describe, expect, it } from "vitest";
+import { appRouter } from "./routers";
+import type { TrpcContext } from "./_core/context";
+
+function context(user: TrpcContext["user"] = null): TrpcContext {
+  return {
+    user,
+    req: { protocol: "https", headers: {} } as TrpcContext["req"],
+    res: {} as TrpcContext["res"],
+  };
+}
+
+describe("Evently server-backed workflow boundaries", () => {
+  it("public event discovery is database-backed and returns an empty collection when no database is configured", async () => {
+    const result = await appRouter.createCaller(context()).events.list();
+    expect(result).toEqual([]);
+  });
+
+  it("unauthenticated booking creation is rejected before any write is attempted", async () => {
+    const caller = appRouter.createCaller(context());
+    await expect(caller.bookings.create({
+      eventId: 1,
+      ticketTypeId: 1,
+      attendeeName: "Test attendee",
+      attendeeEmail: "test@example.com",
+      quantity: 1,
+      paymentReference: null,
+      idempotencyKey: "test-idempotency-key-1234",
+    })).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+  });
+});

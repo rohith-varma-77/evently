@@ -67,6 +67,7 @@ export const bookings = mysqlTable("bookings", {
   quantity: int("quantity").notNull(),
   status: mysqlEnum("status", ["pending", "confirmed", "cancelled"]).default("pending").notNull(),
   paymentReference: varchar("paymentReference", { length: 160 }),
+  idempotencyKey: varchar("idempotencyKey", { length: 96 }).notNull().unique(),
   stripePaymentIntentId: varchar("stripePaymentIntentId", { length: 120 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
