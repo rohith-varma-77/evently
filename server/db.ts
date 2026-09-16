@@ -215,11 +215,27 @@ export async function createBooking(input: {
     const event = (await tx.select().from(events).where(and(eq(events.id, input.eventId), eq(events.status, "published"))).limit(1))[0];
     const ticket = (await tx.select().from(ticketTypes).where(and(eq(ticketTypes.id, input.ticketTypeId), eq(ticketTypes.eventId, input.eventId))).limit(1))[0];
     if (!event || !ticket) throw new Error("Event or ticket type is unavailable");
+    const requestedQuantity = Number(input.quantity);
+    const currentAvailable = Number(ticket.available);
+    if (!Number.isInteger(requestedQuantity) || requestedQuantity < 1) {
+      throw new Error("Ticket quantity must be at least 1");
+    }
+    if (!Number.isInteger(currentAvailable) || currentAvailable < requestedQuantity) {
+      throw new Error("Not enough tickets available");
+    }
     const inventoryUpdate = await tx.update(ticketTypes)
-      .set({ available: sql`${ticketTypes.available} - ${input.quantity}` })
-      .where(and(eq(ticketTypes.id, input.ticketTypeId), gte(ticketTypes.available, input.quantity)));
-    const affectedRows = Number((inventoryUpdate as unknown as { affectedRows?: number }).affectedRows ?? 0);
-    if (affectedRows !== 1) throw new Error("Not enough tickets available");
+      .set({ available: sql`${ticketTypes.available} - ${requestedQuantity}` })
+      .where(and(eq(ticketTypes.id, input.ticketTypeId), gte(ticketTypes.available, requestedQuantity)));
+    const updateMeta = inventoryUpdate as unknown as { affectedRows?: number | string; rowsAffected?: number | string };
+    const affectedRows = Number(updateMeta.affectedRows ?? updateMeta.rowsAffected ?? 1);
+    const updatedTicket = (await tx.select({ available: ticketTypes.available })
+      .from(ticketTypes)
+      .where(eq(ticketTypes.id, input.ticketTypeId))
+      .limit(1))[0];
+    const nextAvailable = Number(updatedTicket?.available);
+    if (affectedRows < 1 || nextAvailable !== currentAvailable - requestedQuantity) {
+      throw new Error("Not enough tickets available");
+    }
     const result = await tx.insert(bookings).values({
       bookingCode: createBookingCode(),
       eventId: input.eventId,
@@ -227,7 +243,7 @@ export async function createBooking(input: {
       attendeeId: input.attendeeId,
       attendeeName: input.attendeeName,
       attendeeEmail: input.attendeeEmail,
-      quantity: input.quantity,
+      quantity: requestedQuantity,
       status: "pending",
       paymentReference: input.paymentReference ?? null,
       idempotencyKey: input.idempotencyKey,

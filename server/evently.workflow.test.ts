@@ -11,9 +11,13 @@ function context(user: TrpcContext["user"] = null): TrpcContext {
 }
 
 describe("Evently server-backed workflow boundaries", () => {
-  it("public event discovery is database-backed and returns an empty collection when no database is configured", async () => {
+  it("public event discovery returns a typed collection from the database", async () => {
     const result = await appRouter.createCaller(context()).events.list();
-    expect(result).toEqual([]);
+    expect(Array.isArray(result)).toBe(true);
+    if (result.length > 0) {
+      expect(result[0]).toHaveProperty("slug");
+      expect(Array.isArray(result[0]?.tickets)).toBe(true);
+    }
   });
 
   it("unauthenticated booking creation is rejected before any write is attempted", async () => {
