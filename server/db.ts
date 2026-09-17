@@ -175,15 +175,38 @@ export async function updateEvent(eventId: number, organizerId: number, input: O
       paymentWhatsapp: input.paymentWhatsapp ?? null,
       ticketTheme: input.ticketTheme ?? null,
     }).where(eq(events.id, eventId));
-    await tx.delete(ticketTypes).where(eq(ticketTypes.eventId, eventId));
-    await tx.insert(ticketTypes).values(input.tickets.map(ticket => ({
-      eventId,
-      name: ticket.name,
-      description: ticket.description ?? null,
-      priceMinor: ticket.priceMinor,
-      quantity: ticket.quantity,
-      available: ticket.quantity,
-    })));
+    const existingTickets = await tx.select().from(ticketTypes).where(eq(ticketTypes.eventId, eventId));
+    const existingBookings = await tx.select({ id: bookings.id }).from(bookings).where(eq(bookings.eventId, eventId)).limit(1);
+    if (existingBookings.length) {
+      if (existingTickets.length !== input.tickets.length) {
+        throw new Error("Ticket types cannot be added or removed after registrations exist");
+      }
+      for (let index = 0; index < input.tickets.length; index += 1) {
+        const ticket = input.tickets[index];
+        const currentTicket = existingTickets[index];
+        const sold = Number(currentTicket.quantity) - Number(currentTicket.available);
+        if (ticket.quantity < sold) {
+          throw new Error(`Ticket quantity cannot be lower than tickets already reserved (${sold})`);
+        }
+        await tx.update(ticketTypes).set({
+          name: ticket.name,
+          description: ticket.description ?? null,
+          priceMinor: ticket.priceMinor,
+          quantity: ticket.quantity,
+          available: ticket.quantity - sold,
+        }).where(eq(ticketTypes.id, currentTicket.id));
+      }
+    } else {
+      await tx.delete(ticketTypes).where(eq(ticketTypes.eventId, eventId));
+      await tx.insert(ticketTypes).values(input.tickets.map(ticket => ({
+        eventId,
+        name: ticket.name,
+        description: ticket.description ?? null,
+        priceMinor: ticket.priceMinor,
+        quantity: ticket.quantity,
+        available: ticket.quantity,
+      })));
+    }
     const updated = (await tx.select().from(events).where(eq(events.id, eventId)).limit(1))[0];
     const updatedTickets = await tx.select().from(ticketTypes).where(eq(ticketTypes.eventId, eventId));
     return { ...updated, tickets: updatedTickets };

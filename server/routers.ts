@@ -25,7 +25,7 @@ import {
   setEventStatus,
   updateEvent,
 } from "./db";
-import { eventStaff, users } from "../drizzle/schema";
+import { bookings, eventStaff, events, users } from "../drizzle/schema";
 
 const eventInput = z.object({
   title: z.string().trim().min(3).max(180),
@@ -156,8 +156,20 @@ export const appRouter = router({
       if (!(await canAccessEventForCheckIn(input.eventId, ctx.user!.id, ctx.user!.role))) {
         throw new TRPCError({ code: "FORBIDDEN", message: "You cannot issue passes for this event." });
       }
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      const row = (await db.select({ booking: bookings, event: events }).from(bookings).innerJoin(events, eq(bookings.eventId, events.id)).where(eq(bookings.id, input.bookingId)).limit(1))[0];
+      if (!row || row.booking.eventId !== input.eventId || row.booking.ticketTypeId !== input.ticketTypeId) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Booking or ticket type not found for this event." });
+      }
+      if (row.booking.status !== "confirmed") {
+        throw new TRPCError({ code: "CONFLICT", message: "Only confirmed bookings can receive ticket passes." });
+      }
+      if (row.booking.quantity !== input.quantity) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Pass quantity must match the confirmed booking." });
+      }
       try {
-        return await issueTicketPasses(input);
+        return await issueTicketPasses({ bookingId: row.booking.id, eventId: row.booking.eventId, ticketTypeId: row.booking.ticketTypeId, quantity: row.booking.quantity });
       } catch (error) {
         dbError(error);
       }
