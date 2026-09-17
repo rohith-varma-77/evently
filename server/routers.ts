@@ -187,9 +187,9 @@ export const appRouter = router({
       if (pass.status === "CANCELLED") return { status: "INVALID" as const, passId: pass.passId };
       try {
         const updated = await markTicketPassCheckedIn(pass.passId, ctx.user!.id);
-        return updated?.status === "CHECKED_IN"
-          ? { status: "CHECKED_IN" as const, passId: updated.passId, checkedInAt: updated.checkedInAt }
-          : { status: "ALREADY_USED" as const, passId: pass.passId, checkedInAt: updated?.checkedInAt };
+        return updated.changed && updated.pass?.status === "CHECKED_IN"
+          ? { status: "CHECKED_IN" as const, passId: updated.pass.passId, checkedInAt: updated.pass.checkedInAt }
+          : { status: "ALREADY_USED" as const, passId: pass.passId, checkedInAt: updated.pass?.checkedInAt };
       } catch (error) {
         dbError(error);
       }

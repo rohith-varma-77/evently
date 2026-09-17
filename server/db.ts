@@ -325,7 +325,12 @@ export async function cancelBooking(bookingCode: string, attendeeId: number) {
     const booking = (await tx.select().from(bookings).where(and(eq(bookings.bookingCode, bookingCode), eq(bookings.attendeeId, attendeeId))).limit(1))[0];
     if (!booking) return undefined;
     if (booking.status === "cancelled") return booking;
-    await tx.update(bookings).set({ status: "cancelled" }).where(and(eq(bookings.id, booking.id), eq(bookings.status, booking.status)));
+    const cancellation = await tx.update(bookings).set({ status: "cancelled" }).where(and(eq(bookings.id, booking.id), eq(bookings.status, booking.status)));
+    const cancellationMeta = cancellation as unknown as { affectedRows?: number | string; rowsAffected?: number | string };
+    const cancellationRows = Number(cancellationMeta.affectedRows ?? cancellationMeta.rowsAffected ?? 1);
+    if (cancellationRows < 1) {
+      return (await tx.select().from(bookings).where(eq(bookings.id, booking.id)).limit(1))[0];
+    }
     await tx.update(ticketTypes).set({ available: sql`${ticketTypes.available} + ${booking.quantity}` }).where(eq(ticketTypes.id, booking.ticketTypeId));
     await tx.update(ticketPasses).set({ status: "CANCELLED" }).where(eq(ticketPasses.bookingId, booking.id));
     return (await tx.select().from(bookings).where(eq(bookings.id, booking.id)).limit(1))[0];
@@ -373,6 +378,8 @@ export async function canAccessEventForCheckIn(eventId: number, userId: number, 
 export async function markTicketPassCheckedIn(passId: string, userId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable; check-in was not recorded");
-  await db.update(ticketPasses).set({ status: "CHECKED_IN", checkedInAt: new Date(), checkedInBy: userId }).where(and(eq(ticketPasses.passId, passId), eq(ticketPasses.status, "ACTIVE")));
-  return getTicketPassById(passId);
+  const update = await db.update(ticketPasses).set({ status: "CHECKED_IN", checkedInAt: new Date(), checkedInBy: userId }).where(and(eq(ticketPasses.passId, passId), eq(ticketPasses.status, "ACTIVE")));
+  const updateMeta = update as unknown as { affectedRows?: number | string; rowsAffected?: number | string };
+  const changed = Number(updateMeta.affectedRows ?? updateMeta.rowsAffected ?? 1) === 1;
+  return { pass: await getTicketPassById(passId), changed };
 }
