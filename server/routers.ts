@@ -26,13 +26,14 @@ import {
   updateEvent,
 } from "./db";
 import { bookings, eventStaff, events, users } from "../drizzle/schema";
+import { storagePut } from "./storage";
 
 const eventInput = z.object({
   title: z.string().trim().min(3).max(180),
   slug: z.string().trim().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).max(220),
   category: z.string().trim().min(2).max(64),
   description: z.string().trim().min(20),
-  imageUrl: z.string().url().max(2000).nullable().optional(),
+  imageUrl: z.string().trim().max(2000).refine(value => value.startsWith("/manus-storage/") || /^https?:\/\//i.test(value), "Image URL must be HTTPS or managed storage").nullable().optional(),
   venue: z.string().trim().min(2).max(180),
   location: z.string().trim().min(2).max(180),
   startsAt: z.coerce.date(),
@@ -76,6 +77,21 @@ export const appRouter = router({
       return event;
     }),
     mine: organizerProcedure.query(({ ctx }) => getOrganizerEvents(ctx.user!.id)),
+    uploadImage: organizerProcedure.input(z.object({
+      fileName: z.string().trim().min(1).max(180),
+      mimeType: z.enum(["image/jpeg", "image/png", "image/webp", "image/gif"]),
+      dataBase64: z.string().min(1).max(8_000_000),
+    })).mutation(async ({ ctx, input }) => {
+      try {
+        const data = Buffer.from(input.dataBase64, "base64");
+        if (!data.length || data.length > 6 * 1024 * 1024) throw new TRPCError({ code: "BAD_REQUEST", message: "Image must be between 1 byte and 6 MB." });
+        const safeName = input.fileName.replace(/[^a-zA-Z0-9._-]/g, "-");
+        return await storagePut(`events/${ctx.user!.id}/${safeName}`, data, input.mimeType);
+      } catch (error) {
+        if (error instanceof TRPCError) throw error;
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Image upload failed. Please try again." });
+      }
+    }),
     create: organizerProcedure.input(eventInput).mutation(async ({ ctx, input }) => {
       try {
         return await createEvent({ ...input, organizerId: ctx.user!.id });
