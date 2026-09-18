@@ -372,6 +372,18 @@ export async function getTicketPassById(passId: string) {
   return (await db.select().from(ticketPasses).where(eq(ticketPasses.passId, passId)).limit(1))[0];
 }
 
+export async function getTicketPassesForOrganizer(organizerId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select({ pass: ticketPasses, booking: bookings, event: events, ticket: ticketTypes })
+    .from(ticketPasses)
+    .innerJoin(bookings, eq(ticketPasses.bookingId, bookings.id))
+    .innerJoin(events, eq(ticketPasses.eventId, events.id))
+    .innerJoin(ticketTypes, eq(ticketPasses.ticketTypeId, ticketTypes.id))
+    .where(eq(events.organizerId, organizerId))
+    .orderBy(asc(events.startsAt), asc(ticketPasses.createdAt));
+}
+
 export async function getTicketPassesForUser(userId: number) {
   const db = await getDb();
   if (!db) return [];

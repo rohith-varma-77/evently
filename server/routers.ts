@@ -19,6 +19,7 @@ import {
   getPublishedEventBySlug,
   getPublishedEvents,
   getTicketPassById,
+  getTicketPassesForOrganizer,
   getTicketPassesForUser,
   issueTicketPasses,
   markTicketPassCheckedIn,
@@ -168,6 +169,7 @@ export const appRouter = router({
   }),
   ticketPasses: router({
     mine: protectedProcedure.query(({ ctx }) => getTicketPassesForUser(ctx.user!.id)),
+    organizer: organizerProcedure.query(({ ctx }) => getTicketPassesForOrganizer(ctx.user!.id)),
     issue: organizerProcedure.input(z.object({ bookingId: z.number().int().positive(), eventId: z.number().int().positive(), ticketTypeId: z.number().int().positive(), quantity: z.number().int().min(1).max(20) })).mutation(async ({ ctx, input }) => {
       if (!(await canAccessEventForCheckIn(input.eventId, ctx.user!.id, ctx.user!.role))) {
         throw new TRPCError({ code: "FORBIDDEN", message: "You cannot issue passes for this event." });
